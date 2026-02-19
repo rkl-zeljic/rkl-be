@@ -1,0 +1,66 @@
+# Cursor Rules for Miki ETL Project
+
+## Project Type
+Python ETL application for processing weighbridge Excel reports.
+
+## Language & Framework
+- Python 3.13
+- pandas for data manipulation
+- SQLite for storage
+- xlrd/openpyxl for Excel parsing
+
+## Code Style
+
+### Always Use
+- Type hints on all function signatures
+- snake_case for functions and variables
+- UPPER_CASE for constants
+- _prefix for private/internal functions
+- Parameterized SQL queries for values
+- Context managers for file/database operations
+
+### Never Use
+- Global mutable state
+- Hardcoded absolute paths
+- SQL string interpolation for user data
+- print() for errors (use exceptions)
+
+## File Structure
+- main.py - Single-file ETL application
+- data/ - Input Excel files
+- rkl.db - SQLite database
+- .claude/ - AI assistant configuration
+
+## Key Patterns
+
+### Adding New Column
+1. EXPECTED_COLUMNS list (line ~31)
+2. DB_COLUMNS list (line ~48)
+3. ensure_sqlite_schema() DDL (line ~169)
+4. df_to_db_rows() mapping (line ~219)
+
+### Function Signature Template
+```python
+def function_name(
+    required_param: Type,
+    optional_param: Optional[Type] = None
+) -> ReturnType:
+    """Brief description."""
+    pass
+```
+
+## Database
+- Table: merenja
+- Unique key: (datum_izvestaja, merni_list_br)
+- Uses UPSERT (INSERT ... ON CONFLICT UPDATE)
+
+## Testing
+```bash
+python main.py data/ --db test.db --verbose
+sqlite3 test.db "SELECT COUNT(*) FROM merenja"
+```
+
+## Domain
+- Stone quarry weighbridge data
+- Serbian language column names
+- Daily Excel reports with measurement records
