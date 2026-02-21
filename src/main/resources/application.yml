@@ -1,0 +1,22 @@
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/rkl
+    username: ${RKL_DB_USER:postgres}
+    password: ${RKL_DB_PASSWORD:postgres}
+  jpa:
+    hibernate:
+      ddl-auto: update
+    open-in-view: false
+  servlet:
+    multipart:
+      max-file-size: ${RKL_MAX_FILE_SIZE_MB:10}MB
+      max-request-size: ${RKL_MAX_FILE_SIZE_MB:10}MB
+
+server:
+  port: 8000
+
+rkl:
+  allowed-extensions:
+    - ".xls"
+    - ".xlsx"
+  temp-dir: ${java.io.tmpdir}
