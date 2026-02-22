@@ -60,7 +60,7 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build and tag Docker image
-        run: docker tag $IMAGE_NAME:${{ github.sha }} $IMAGE_NAME:latest
+        run: docker build -t $IMAGE_NAME:${{ github.sha }} $IMAGE_NAME:latest .
 
       - name: Push Docker images to GHCR
         run: docker push $IMAGE_NAME:latest
