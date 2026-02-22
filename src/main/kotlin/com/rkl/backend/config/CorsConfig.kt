@@ -13,7 +13,9 @@ class CorsConfig : WebMvcConfigurer {
                 "http://localhost:5173",
                 "http://localhost:3000",
                 "http://127.0.0.1:5173",
-                "http://127.0.0.1:3000"
+                "http://127.0.0.1:3000",
+                "https://rklzeljic.com",
+                "https://rkl-fe.livelysmoke-ef1fb120.westeurope.azurecontainerapps.io"
             )
             .allowedMethods("*")
             .allowedHeaders("*")
