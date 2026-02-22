@@ -63,7 +63,9 @@ jobs:
         run: docker build -t $IMAGE_NAME:${{ github.sha }} -t $IMAGE_NAME:latest .
 
       - name: Push Docker images to GHCR
-        run: docker push $IMAGE_NAME:latest
+        run: |
+          docker push $IMAGE_NAME:${{ github.sha }}
+          docker push $IMAGE_NAME:latest
 
   azure-deploy:
     needs: docker-build-push-ghcr
