@@ -1,0 +1,15 @@
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/rkl
+    username: ${RKL_DB_USER:postgres}
+    password: ${RKL_DB_PASSWORD:postgres}
+  jpa:
+    hibernate:
+      ddl-auto: update
+    open-in-view: false
+
+rkl:
+  allowed-extensions:
+    - ".xls"
+    - ".xlsx"
+  temp-dir: ${java.io.tmpdir}
