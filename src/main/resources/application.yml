@@ -7,13 +7,6 @@ spring:
     hibernate:
       ddl-auto: update
     open-in-view: false
-  servlet:
-    multipart:
-      max-file-size: ${RKL_MAX_FILE_SIZE_MB:10}MB
-      max-request-size: ${RKL_MAX_FILE_SIZE_MB:10}MB
-
-server:
-  port: 8000
 
 rkl:
   allowed-extensions:
