@@ -87,8 +87,8 @@ interface MerenjeRepository : JpaRepository<Merenje, Long>, JpaSpecificationExec
               AND (:porucilac IS NULL OR porucilac LIKE :porucilac)
               AND (:vozac IS NULL OR vozac LIKE :vozac)
               AND (:roba IS NULL OR roba LIKE :roba)
-            GROUP BY TO_CHAR(datum_izvestaja, :format)
-            ORDER BY period ASC
+            GROUP BY 1
+            ORDER BY 1 ASC
         """,
         nativeQuery = true
     )
