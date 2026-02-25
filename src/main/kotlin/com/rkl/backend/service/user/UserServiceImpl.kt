@@ -94,8 +94,8 @@ class UserServiceImpl(
             }
     }
 
-    override fun getCurrentUserOrCreateIfNotExist(name: String): UserResponseDTO {
-        userDao.createUserIfNotExists(name)
+    override fun getCurrentUserOrCreateIfNotExist(name: String, isAdmin: Boolean): UserResponseDTO {
+        userDao.createUserIfNotExists(name, isAdmin)
         return userDao.findByName(name).let(userMapper::mapToDTO)
     }
 }

@@ -183,7 +183,8 @@ class JwtAuthFilter(
                 val email = claims.getClaim("email") as? String
                     ?: throw RuntimeException("Email claim not found")
 
-                val userResponseDTO = userService.getCurrentUserOrCreateIfNotExist(email)
+                val isAdmin = securityConfig.admins.contains(email)
+                val userResponseDTO = userService.getCurrentUserOrCreateIfNotExist(email, isAdmin)
 
                 val authorities = listOf(SimpleGrantedAuthority("ROLE_${userResponseDTO.type}"))
 

@@ -50,15 +50,22 @@ class UserDaoImpl(
         userRepository.deleteById(id)
     }
 
-    override fun createUserIfNotExists(email: String) {
-        userRepository.findByEmail(email)
-            ?: try {
-                create(
-                    RklUser(email = email, type = UserType.DRIVER)
-                )
-            } catch (_: DataIntegrityViolationException) {
-                // concurrent request already created this user — safe to ignore
+    override fun createUserIfNotExists(email: String, isAdmin: Boolean) {
+        val existingUser = userRepository.findByEmail(email)
+        if (existingUser != null) {
+            if (isAdmin && existingUser.type != UserType.ADMIN) {
+                existingUser.type = UserType.ADMIN
+                userRepository.save(existingUser)
             }
+            return
+        }
+        try {
+            create(
+                RklUser(email = email, type = if (isAdmin) UserType.ADMIN else UserType.DRIVER)
+            )
+        } catch (_: DataIntegrityViolationException) {
+            // concurrent request already created this user — safe to ignore
+        }
     }
 
     private fun assertDoesNotExistByEmail(email: String) {

@@ -12,5 +12,5 @@ interface UserDao {
     fun create(rklUser: RklUser): RklUser
     fun update(rklUser: RklUser): RklUser
     fun deleteById(id: Long)
-    fun createUserIfNotExists(email: String)
+    fun createUserIfNotExists(email: String, isAdmin: Boolean = false)
 }
