@@ -5,7 +5,7 @@ spring:
     password: ${RKL_DB_PASSWORD:postgres}
   jpa:
     hibernate:
-      ddl-auto: update
+      ddl-auto: create
     open-in-view: false
 
 rkl:
@@ -13,3 +13,19 @@ rkl:
     - ".xls"
     - ".xlsx"
   temp-dir: ${java.io.tmpdir}
+  security:
+    enabled: true
+    cors-enabled: true
+    allowed-origins:
+      - "http://localhost:5173"
+      - "https://rkl-fe.livelysmoke-ef1fb120.westeurope.azurecontainerapps.io"
+    expected-issuer: https://kpjwzjiheuxttvmrjlge.supabase.co/auth/v1
+    jwt-public-key: '{"keys":[{"alg":"ES256","crv":"P-256","ext":true,"key_ops":["verify"],"kid":"54ee3e5f-3e62-4bc5-a928-3003977e3555","kty":"EC","use":"sig","x":"wY15ENBVr6P-vCVPg2Q-OsfbJ2CBY5ZclMKfd7xTrN8","y":"b_3vsx3PjzaU-0_VC-NFdVl_GOQy8si4Rl1pk2mAH8o"}]}'
+    jwks-url: https://kpjwzjiheuxttvmrjlge.supabase.co/auth/v1/.well-known/jwks.json
+    permit-all-endpoints:
+      - "/actuator/**"
+      - "/swagger-ui.html"
+      - "/swagger-ui/**"
+      - "/v3/api-docs/**"
+    admins:
+      - "uros.simeunovic.2002@gmail.com"
