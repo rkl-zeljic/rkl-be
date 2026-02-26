@@ -51,7 +51,7 @@ class UserController(
 
     @GetMapping("/me")
     fun getCurrentUser(authentication: Authentication): UserResponseDTO {
-        return userService.getCurrentUserOrCreateIfNotExist(authentication.name)
+        return userService.getCurrentUser(authentication.name)
     }
 
     @PostMapping

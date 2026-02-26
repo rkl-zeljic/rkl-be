@@ -184,7 +184,23 @@ class JwtAuthFilter(
                     ?: throw RuntimeException("Email claim not found")
 
                 val isAdmin = securityConfig.admins.contains(email)
-                val userResponseDTO = userService.getCurrentUserOrCreateIfNotExist(email, isAdmin)
+                val userResponseDTO = if (isAdmin) {
+                    userService.getCurrentUserOrCreateIfNotExist(email, true)
+                } else {
+                    try {
+                        userService.getCurrentUser(email)
+                    } catch (e: Exception) {
+                        val httpResponse = response as HttpServletResponse
+                        httpResponse.status = HttpServletResponse.SC_FORBIDDEN
+                        httpResponse.contentType = "application/json"
+                        httpResponse.characterEncoding = "UTF-8"
+                        httpResponse.writer.apply {
+                            write("""{"message": "User not registered. Contact an admin."}""")
+                            flush()
+                        }
+                        return
+                    }
+                }
 
                 val authorities = listOf(SimpleGrantedAuthority("ROLE_${userResponseDTO.type}"))
 
