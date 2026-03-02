@@ -1,7 +1,6 @@
-package com.rkl.backend.dto
+package com.rkl.backend.dto.measurement
 
-import com.rkl.backend.enums.UserType
-import java.time.Instant
+import com.rkl.backend.dto.common.PaginationMeta
 
 data class ImportResponse(
     val status: String = "success",
@@ -35,13 +34,6 @@ data class MeasurementDto(
     val potpis: String?,
     val createdAt: String?,
     val updatedAt: String?
-)
-
-data class PaginationMeta(
-    val totalCount: Long,
-    val page: Int,
-    val pageSize: Int,
-    val totalPages: Int
 )
 
 data class MeasurementsResponse(
@@ -92,53 +84,8 @@ data class DriversResponse(
     val totalCount: Int
 )
 
-data class HealthResponse(
-    val status: String,
-    val service: String = "Miki RKL API",
-    val version: String = "1.0.0",
-    val database: String
-)
-
-data class ErrorResponse(
-    val status: String = "error",
-    val message: String,
-    val details: String? = null
-)
-
 data class SignatureResponse(
     val status: String = "success",
     val measurementId: Long,
     val hasSignature: Boolean
-)
-
-data class UserResponseDTO(
-    val id: Long,
-    val email: String,
-    val type: UserType = UserType.DRIVER,
-    val createdAt: Instant?
-)
-
-data class UsersResponse(
-    val status: String = "success",
-    val data: List<UserResponseDTO>,
-    val pagination: PaginationMeta
-)
-
-data class ImportedFileDto(
-    val id: Long?,
-    val originalFilename: String,
-    val fileSize: Long,
-    val recordCount: Long,
-    val uploadedBy: String?,
-    val createdAt: String?
-)
-
-data class ImportedFilesResponse(
-    val status: String = "success",
-    val data: List<ImportedFileDto>
-)
-
-data class FileDeleteResponse(
-    val status: String = "success",
-    val deletedMeasurements: Long
 )

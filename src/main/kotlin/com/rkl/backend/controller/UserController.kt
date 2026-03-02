@@ -1,6 +1,7 @@
 package com.rkl.backend.controller
 
-import com.rkl.backend.dto.*
+import com.rkl.backend.dto.common.PaginationMeta
+import com.rkl.backend.dto.user.*
 import com.rkl.backend.enums.UserType
 import com.rkl.backend.searchfilter.dto.UserFilter
 import com.rkl.backend.service.user.UserService

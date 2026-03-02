@@ -1,9 +1,9 @@
 package com.rkl.backend.service.user
 
-import com.rkl.backend.dto.CreateUserRequestDTO
-import com.rkl.backend.dto.UpdateCurrentUserRequestDTO
-import com.rkl.backend.dto.UpdateUserRequestDTO
-import com.rkl.backend.dto.UserResponseDTO
+import com.rkl.backend.dto.user.CreateUserRequestDTO
+import com.rkl.backend.dto.user.UpdateCurrentUserRequestDTO
+import com.rkl.backend.dto.user.UpdateUserRequestDTO
+import com.rkl.backend.dto.user.UserResponseDTO
 import com.rkl.backend.searchfilter.dto.UserFilter
 import org.springframework.data.domain.Page
 import org.springframework.data.domain.Pageable

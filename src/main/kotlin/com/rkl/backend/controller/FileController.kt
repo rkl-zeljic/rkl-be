@@ -1,8 +1,8 @@
 package com.rkl.backend.controller
 
-import com.rkl.backend.dto.FileDeleteResponse
-import com.rkl.backend.dto.ImportedFileDto
-import com.rkl.backend.dto.ImportedFilesResponse
+import com.rkl.backend.dto.file.FileDeleteResponse
+import com.rkl.backend.dto.file.ImportedFileDto
+import com.rkl.backend.dto.file.ImportedFilesResponse
 import com.rkl.backend.repository.ImportedFileRepository
 import com.rkl.backend.repository.MerenjeRepository
 import com.rkl.backend.service.AzureBlobStorageService

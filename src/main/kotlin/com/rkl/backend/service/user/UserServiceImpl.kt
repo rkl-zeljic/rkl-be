@@ -1,10 +1,10 @@
 package com.rkl.backend.service.user
 
 import com.rkl.backend.dao.user.UserDao
-import com.rkl.backend.dto.CreateUserRequestDTO
-import com.rkl.backend.dto.UpdateCurrentUserRequestDTO
-import com.rkl.backend.dto.UpdateUserRequestDTO
-import com.rkl.backend.dto.UserResponseDTO
+import com.rkl.backend.dto.user.CreateUserRequestDTO
+import com.rkl.backend.dto.user.UpdateCurrentUserRequestDTO
+import com.rkl.backend.dto.user.UpdateUserRequestDTO
+import com.rkl.backend.dto.user.UserResponseDTO
 import com.rkl.backend.enums.UserType
 import com.rkl.backend.mapper.user.UserMapper
 import com.rkl.backend.searchfilter.dto.UserFilter

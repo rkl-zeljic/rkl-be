@@ -1,7 +1,7 @@
 package com.rkl.backend.mapper.user
 
-import com.rkl.backend.dto.CreateUserRequestDTO
-import com.rkl.backend.dto.UserResponseDTO
+import com.rkl.backend.dto.user.CreateUserRequestDTO
+import com.rkl.backend.dto.user.UserResponseDTO
 import com.rkl.backend.entity.RklUser
 import org.springframework.stereotype.Component
 

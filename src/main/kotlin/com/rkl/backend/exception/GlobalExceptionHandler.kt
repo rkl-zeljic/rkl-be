@@ -1,9 +1,10 @@
 package com.rkl.backend.exception
 
-import com.rkl.backend.dto.ErrorResponse
+import com.rkl.backend.dto.common.ErrorResponse
 import org.slf4j.LoggerFactory
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
+import org.springframework.web.bind.MethodArgumentNotValidException
 import org.springframework.web.bind.annotation.ExceptionHandler
 import org.springframework.web.bind.annotation.RestControllerAdvice
 import org.springframework.web.multipart.MaxUploadSizeExceededException
@@ -24,6 +25,14 @@ class GlobalExceptionHandler {
     fun handleNotFound(ex: NoSuchElementException): ResponseEntity<ErrorResponse> {
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(
             ErrorResponse(message = ex.message ?: "Not found")
+        )
+    }
+
+    @ExceptionHandler(MethodArgumentNotValidException::class)
+    fun handleValidation(ex: MethodArgumentNotValidException): ResponseEntity<ErrorResponse> {
+        val errors = ex.bindingResult.fieldErrors.joinToString(", ") { "${it.field}: ${it.defaultMessage}" }
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(
+            ErrorResponse(message = "Validation failed", details = errors)
         )
     }
 

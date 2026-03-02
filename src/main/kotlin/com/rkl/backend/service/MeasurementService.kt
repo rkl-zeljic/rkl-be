@@ -1,7 +1,8 @@
 package com.rkl.backend.service
 
 import com.rkl.backend.config.AppProperties
-import com.rkl.backend.dto.*
+import com.rkl.backend.dto.common.PaginationMeta
+import com.rkl.backend.dto.measurement.*
 import com.rkl.backend.entity.ImportedFile
 import com.rkl.backend.entity.Merenje
 import com.rkl.backend.repository.ImportedFileRepository
@@ -118,88 +119,67 @@ class MeasurementService(
     }
 
     @Transactional(readOnly = true)
-    fun queryMeasurements(
-        page: Int,
-        pageSize: Int,
-        datumOd: LocalDate?,
-        datumDo: LocalDate?,
-        roba: String?,
-        registracija: String?,
-        prevoznik: String?,
-        posiljalac: String?,
-        porucilac: String?,
-        primalac: String?,
-        vozac: String?,
-        sortBy: String,
-        sortOrder: String
-    ): MeasurementsResponse {
-        if (sortBy !in SORT_WHITELIST) {
-            throw IllegalArgumentException("Invalid sortBy field: $sortBy. Allowed: $SORT_WHITELIST")
+    fun queryMeasurements(filter: MeasurementFilterRequest): MeasurementsResponse {
+        if (filter.sortBy !in SORT_WHITELIST) {
+            throw IllegalArgumentException("Invalid sortBy field: ${filter.sortBy}. Allowed: $SORT_WHITELIST")
         }
 
         var spec: Specification<Merenje> = Specification { _, _, _ -> null }
-        if (datumOd != null) spec = spec.and(MerenjeSpecification.datumOd(datumOd))
-        if (datumDo != null) spec = spec.and(MerenjeSpecification.datumDo(datumDo))
-        if (!roba.isNullOrBlank()) spec = spec.and(MerenjeSpecification.textLike("roba", roba))
-        if (!registracija.isNullOrBlank()) spec = spec.and(MerenjeSpecification.textLike("registracija", registracija))
-        if (!prevoznik.isNullOrBlank()) spec = spec.and(MerenjeSpecification.textLike("prevoznik", prevoznik))
-        if (!posiljalac.isNullOrBlank()) spec = spec.and(MerenjeSpecification.textLike("posiljalac", posiljalac))
-        if (!porucilac.isNullOrBlank()) spec = spec.and(MerenjeSpecification.textLike("porucilac", porucilac))
-        if (!primalac.isNullOrBlank()) spec = spec.and(MerenjeSpecification.textLike("primalac", primalac))
-        if (!vozac.isNullOrBlank()) spec = spec.and(MerenjeSpecification.textLike("vozac", vozac))
+        if (filter.datumOd != null) spec = spec.and(MerenjeSpecification.datumOd(filter.datumOd))
+        if (filter.datumDo != null) spec = spec.and(MerenjeSpecification.datumDo(filter.datumDo))
+        if (!filter.roba.isNullOrBlank()) spec = spec.and(MerenjeSpecification.textLike("roba", filter.roba))
+        if (!filter.registracija.isNullOrBlank()) spec = spec.and(MerenjeSpecification.textLike("registracija", filter.registracija))
+        if (!filter.prevoznik.isNullOrBlank()) spec = spec.and(MerenjeSpecification.textLike("prevoznik", filter.prevoznik))
+        if (!filter.posiljalac.isNullOrBlank()) spec = spec.and(MerenjeSpecification.textLike("posiljalac", filter.posiljalac))
+        if (!filter.porucilac.isNullOrBlank()) spec = spec.and(MerenjeSpecification.textLike("porucilac", filter.porucilac))
+        if (!filter.primalac.isNullOrBlank()) spec = spec.and(MerenjeSpecification.textLike("primalac", filter.primalac))
+        if (!filter.vozac.isNullOrBlank()) spec = spec.and(MerenjeSpecification.textLike("vozac", filter.vozac))
 
-        val direction = if (sortOrder.equals("ASC", ignoreCase = true)) Sort.Direction.ASC else Sort.Direction.DESC
-        val pageable = PageRequest.of(page - 1, pageSize, Sort.by(direction, sortBy))
+        val direction = if (filter.sortOrder.equals("ASC", ignoreCase = true)) Sort.Direction.ASC else Sort.Direction.DESC
+        val pageable = PageRequest.of(filter.page - 1, filter.pageSize, Sort.by(direction, filter.sortBy))
         val result = repository.findAll(spec, pageable)
 
         val filtersApplied = mutableMapOf<String, String>()
-        if (datumOd != null) filtersApplied["datumOd"] = datumOd.toString()
-        if (datumDo != null) filtersApplied["datumDo"] = datumDo.toString()
-        if (!roba.isNullOrBlank()) filtersApplied["roba"] = roba
-        if (!registracija.isNullOrBlank()) filtersApplied["registracija"] = registracija
-        if (!prevoznik.isNullOrBlank()) filtersApplied["prevoznik"] = prevoznik
-        if (!posiljalac.isNullOrBlank()) filtersApplied["posiljalac"] = posiljalac
-        if (!porucilac.isNullOrBlank()) filtersApplied["porucilac"] = porucilac
-        if (!primalac.isNullOrBlank()) filtersApplied["primalac"] = primalac
-        if (!vozac.isNullOrBlank()) filtersApplied["vozac"] = vozac
+        if (filter.datumOd != null) filtersApplied["datumOd"] = filter.datumOd.toString()
+        if (filter.datumDo != null) filtersApplied["datumDo"] = filter.datumDo.toString()
+        if (!filter.roba.isNullOrBlank()) filtersApplied["roba"] = filter.roba
+        if (!filter.registracija.isNullOrBlank()) filtersApplied["registracija"] = filter.registracija
+        if (!filter.prevoznik.isNullOrBlank()) filtersApplied["prevoznik"] = filter.prevoznik
+        if (!filter.posiljalac.isNullOrBlank()) filtersApplied["posiljalac"] = filter.posiljalac
+        if (!filter.porucilac.isNullOrBlank()) filtersApplied["porucilac"] = filter.porucilac
+        if (!filter.primalac.isNullOrBlank()) filtersApplied["primalac"] = filter.primalac
+        if (!filter.vozac.isNullOrBlank()) filtersApplied["vozac"] = filter.vozac
 
         return MeasurementsResponse(
             data = result.content.map { it.toDto() },
             pagination = PaginationMeta(
                 totalCount = result.totalElements,
-                page = page,
-                pageSize = pageSize,
+                page = filter.page,
+                pageSize = filter.pageSize,
                 totalPages = result.totalPages
             ),
             filtersApplied = filtersApplied
         )
     }
 
-    fun getStats(
-        groupBy: String,
-        datumOd: LocalDate?,
-        datumDo: LocalDate?,
-        porucilac: String?,
-        vozac: String?,
-        roba: String?
-    ): StatsResponse {
-        val format = GROUP_BY_FORMATS[groupBy]
-            ?: throw IllegalArgumentException("Invalid groupBy: $groupBy. Allowed: ${GROUP_BY_FORMATS.keys}")
+    fun getStats(filter: StatsFilterRequest): StatsResponse {
+        val format = GROUP_BY_FORMATS[filter.groupBy]
+            ?: throw IllegalArgumentException("Invalid groupBy: ${filter.groupBy}. Allowed: ${GROUP_BY_FORMATS.keys}")
 
         val results = repository.findStats(
             format = format,
-            datumOd = datumOd?.toString(),
-            datumDo = datumDo?.toString(),
-            porucilac = if (!porucilac.isNullOrBlank()) "%$porucilac%" else null,
-            vozac = if (!vozac.isNullOrBlank()) "%$vozac%" else null,
-            roba = if (!roba.isNullOrBlank()) "%$roba%" else null
+            datumOd = filter.datumOd?.toString(),
+            datumDo = filter.datumDo?.toString(),
+            porucilac = if (!filter.porucilac.isNullOrBlank()) "%${filter.porucilac}%" else null,
+            vozac = if (!filter.vozac.isNullOrBlank()) "%${filter.vozac}%" else null,
+            roba = if (!filter.roba.isNullOrBlank()) "%${filter.roba}%" else null
         )
 
         val dataPoints = results.map { StatsDataPoint(period = it.period, count = it.count) }
         val totalCount = dataPoints.sumOf { it.count }
 
         return StatsResponse(
-            groupBy = groupBy,
+            groupBy = filter.groupBy,
             data = dataPoints,
             totalCount = totalCount
         )

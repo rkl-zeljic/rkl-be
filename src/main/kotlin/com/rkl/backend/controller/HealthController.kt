@@ -1,6 +1,6 @@
 package com.rkl.backend.controller
 
-import com.rkl.backend.dto.HealthResponse
+import com.rkl.backend.dto.health.HealthResponse
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.RestController
 import javax.sql.DataSource
