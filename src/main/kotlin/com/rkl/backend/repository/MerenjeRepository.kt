@@ -30,6 +30,8 @@ interface MerenjeRepository : JpaRepository<Merenje, Long>, JpaSpecificationExec
 
     fun findByDatumIzvestajaAndMerniListBr(datumIzvestaja: LocalDate, merniListBr: Int): Optional<Merenje>
 
+    fun countByImportedFileId(id: Long): Long
+
     @Query(
         """
         SELECT m.porucilac AS porucilac, COUNT(m) AS measurementCount

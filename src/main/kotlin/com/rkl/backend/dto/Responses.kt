@@ -10,12 +10,14 @@ data class ImportResponse(
     val totalRows: Int,
     val filename: String,
     val processingTimeMs: Long,
+    val fileId: Long? = null,
     val errors: List<String>? = null
 )
 
 data class MeasurementDto(
     val id: Long?,
     val izvorFajl: String?,
+    val importedFileId: Long? = null,
     val datumIzvestaja: String?,
     val merniListBr: Int,
     val posiljalac: String?,
@@ -120,4 +122,23 @@ data class UsersResponse(
     val status: String = "success",
     val data: List<UserResponseDTO>,
     val pagination: PaginationMeta
+)
+
+data class ImportedFileDto(
+    val id: Long?,
+    val originalFilename: String,
+    val fileSize: Long,
+    val recordCount: Long,
+    val uploadedBy: String?,
+    val createdAt: String?
+)
+
+data class ImportedFilesResponse(
+    val status: String = "success",
+    val data: List<ImportedFileDto>
+)
+
+data class FileDeleteResponse(
+    val status: String = "success",
+    val deletedMeasurements: Long
 )

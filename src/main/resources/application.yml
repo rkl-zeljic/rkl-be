@@ -13,6 +13,10 @@ rkl:
     - ".xls"
     - ".xlsx"
   temp-dir: ${java.io.tmpdir}
+  azure:
+    storage:
+      connection-string: ${RKL_AZURE_STORAGE_CONNECTION_STRING}
+      container-name: ${RKL_AZURE_STORAGE_CONTAINER}
   security:
     enabled: true
     cors-enabled: true
@@ -30,3 +34,5 @@ rkl:
       - "/v3/api-docs/**"
     admins:
       - "uros.simeunovic.2002@gmail.com"
+      - "zeljicvidoje@gmail.com"
+      - "zeljicmilovan@gmail.com"

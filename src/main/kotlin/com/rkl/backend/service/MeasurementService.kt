@@ -2,7 +2,9 @@ package com.rkl.backend.service
 
 import com.rkl.backend.config.AppProperties
 import com.rkl.backend.dto.*
+import com.rkl.backend.entity.ImportedFile
 import com.rkl.backend.entity.Merenje
+import com.rkl.backend.repository.ImportedFileRepository
 import com.rkl.backend.repository.MerenjeRepository
 import com.rkl.backend.repository.MerenjeSpecification
 import com.rkl.backend.util.DateUtils
@@ -19,7 +21,9 @@ import java.time.LocalDate
 @Service
 class MeasurementService(
     private val repository: MerenjeRepository,
+    private val importedFileRepository: ImportedFileRepository,
     private val excelParsingService: ExcelParsingService,
+    private val azureBlobStorageService: AzureBlobStorageService,
     private val appProperties: AppProperties
 ) {
 
@@ -45,7 +49,7 @@ class MeasurementService(
     }
 
     @Transactional
-    fun importExcel(file: MultipartFile): ImportResponse {
+    fun importExcel(file: MultipartFile, uploadedBy: String? = null): ImportResponse {
         val startTime = System.currentTimeMillis()
         val filename = file.originalFilename ?: "unknown"
 
@@ -60,9 +64,25 @@ class MeasurementService(
             val parsedRows = excelParsingService.parseExcel(tempFile)
             val reportDate = DateUtils.extractReportDateFromFilename(filename)
 
+            // Upload to Azure Blob Storage
+            val blobName = azureBlobStorageService.upload(
+                tempFile.inputStream(),
+                tempFile.length(),
+                filename
+            )
+
+            // Create ImportedFile record
+            val importedFile = importedFileRepository.save(ImportedFile(
+                originalFilename = filename,
+                blobName = blobName,
+                fileSize = file.size,
+                contentType = file.contentType,
+                uploadedBy = uploadedBy,
+                recordCount = parsedRows.size
+            ))
+
             var inserted = 0
             var updated = 0
-            print(parsedRows)
             for (row in parsedRows) {
                 val existingOpt = if (reportDate != null) {
                     repository.findByDatumIzvestajaAndMerniListBr(reportDate, row.merniListBr)
@@ -72,12 +92,12 @@ class MeasurementService(
 
                 if (existingOpt.isPresent) {
                     val entity = existingOpt.get()
-                    applyRowToEntity(entity, row, filename, reportDate)
+                    applyRowToEntity(entity, row, importedFile, reportDate)
                     repository.save(entity)
                     updated++
                 } else {
                     val entity = Merenje()
-                    applyRowToEntity(entity, row, filename, reportDate)
+                    applyRowToEntity(entity, row, importedFile, reportDate)
                     repository.save(entity)
                     inserted++
                 }
@@ -89,13 +109,15 @@ class MeasurementService(
                 updated = updated,
                 totalRows = parsedRows.size,
                 filename = filename,
-                processingTimeMs = processingTimeMs
+                processingTimeMs = processingTimeMs,
+                fileId = importedFile.id
             )
         } finally {
             tempFile.delete()
         }
     }
 
+    @Transactional(readOnly = true)
     fun queryMeasurements(
         page: Int,
         pageSize: Int,
@@ -261,10 +283,10 @@ class MeasurementService(
     private fun applyRowToEntity(
         entity: Merenje,
         row: ExcelParsingService.ParsedRow,
-        filename: String,
+        importedFile: ImportedFile,
         reportDate: LocalDate?
     ) {
-        entity.izvorFajl = filename
+        entity.importedFile = importedFile
         entity.datumIzvestaja = reportDate
         entity.merniListBr = row.merniListBr
         entity.posiljalac = row.posiljalac
@@ -283,7 +305,8 @@ class MeasurementService(
 
     private fun Merenje.toDto(): MeasurementDto = MeasurementDto(
         id = id,
-        izvorFajl = izvorFajl,
+        izvorFajl = importedFile?.originalFilename,
+        importedFileId = importedFile?.id,
         datumIzvestaja = datumIzvestaja?.toString(),
         merniListBr = merniListBr,
         posiljalac = posiljalac,

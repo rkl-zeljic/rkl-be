@@ -3,6 +3,7 @@ package com.rkl.backend.controller
 import com.rkl.backend.dto.*
 import com.rkl.backend.service.MeasurementService
 import org.springframework.format.annotation.DateTimeFormat
+import org.springframework.security.core.Authentication
 import org.springframework.web.bind.annotation.*
 import org.springframework.web.multipart.MultipartFile
 import java.time.LocalDate
@@ -14,8 +15,11 @@ class MeasurementController(
 ) {
 
     @PostMapping("/measurements/import")
-    fun importExcel(@RequestParam("file") file: MultipartFile): ImportResponse {
-        return measurementService.importExcel(file)
+    fun importExcel(
+        @RequestParam("file") file: MultipartFile,
+        authentication: Authentication?
+    ): ImportResponse {
+        return measurementService.importExcel(file, uploadedBy = authentication?.name)
     }
 
     @GetMapping("/measurements")

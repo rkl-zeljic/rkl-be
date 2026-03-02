@@ -22,8 +22,9 @@ class Merenje(
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     var id: Long? = null,
 
-    @Column(name = "izvor_fajl")
-    var izvorFajl: String? = null,
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "imported_file_id")
+    var importedFile: ImportedFile? = null,
 
     @Column(name = "datum_izvestaja")
     var datumIzvestaja: LocalDate? = null,
