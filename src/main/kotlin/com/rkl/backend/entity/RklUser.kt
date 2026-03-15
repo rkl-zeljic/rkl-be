@@ -31,6 +31,12 @@ class RklUser(
     @Enumerated(EnumType.STRING)
     var type: UserType,
 
+    @Column
+    var driverName: String? = null,
+
+    @Column(columnDefinition = "TEXT")
+    var signature: String? = null,
+
     @Column(nullable = false)
     @CreatedDate
     var createdAt: Instant? = null,

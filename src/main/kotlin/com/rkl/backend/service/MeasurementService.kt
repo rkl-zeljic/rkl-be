@@ -23,9 +23,11 @@ import java.time.LocalDate
 class MeasurementService(
     private val repository: MerenjeRepository,
     private val importedFileRepository: ImportedFileRepository,
+    private val userRepository: com.rkl.backend.repository.UserRepository,
     private val excelParsingService: ExcelParsingService,
     private val azureBlobStorageService: AzureBlobStorageService,
-    private val appProperties: AppProperties
+    private val appProperties: AppProperties,
+    private val labelService: LabelService
 ) {
 
     private val logger = LoggerFactory.getLogger(MeasurementService::class.java)
@@ -59,6 +61,10 @@ class MeasurementService(
             throw IllegalArgumentException("File extension '$extension' not allowed. Allowed: ${appProperties.allowedExtensions}")
         }
 
+        if (importedFileRepository.existsByOriginalFilename(filename)) {
+            throw IllegalArgumentException("Fajl sa imenom '$filename' je već importovan")
+        }
+
         val tempFile = File.createTempFile("upload_", extension, File(appProperties.tempDir))
         try {
             file.transferTo(tempFile)
@@ -85,8 +91,9 @@ class MeasurementService(
             var inserted = 0
             var updated = 0
             for (row in parsedRows) {
-                val existingOpt = if (reportDate != null) {
-                    repository.findByDatumIzvestajaAndMerniListBr(reportDate, row.merniListBr)
+                val effectiveDate = row.datum ?: reportDate
+                val existingOpt = if (effectiveDate != null) {
+                    repository.findByDatumIzvestajaAndMerniListBr(effectiveDate, row.merniListBr)
                 } else {
                     java.util.Optional.empty()
                 }
@@ -127,13 +134,13 @@ class MeasurementService(
         var spec: Specification<Merenje> = Specification { _, _, _ -> null }
         if (filter.datumOd != null) spec = spec.and(MerenjeSpecification.datumOd(filter.datumOd))
         if (filter.datumDo != null) spec = spec.and(MerenjeSpecification.datumDo(filter.datumDo))
-        if (!filter.roba.isNullOrBlank()) spec = spec.and(MerenjeSpecification.textLike("roba", filter.roba))
-        if (!filter.registracija.isNullOrBlank()) spec = spec.and(MerenjeSpecification.textLike("registracija", filter.registracija))
-        if (!filter.prevoznik.isNullOrBlank()) spec = spec.and(MerenjeSpecification.textLike("prevoznik", filter.prevoznik))
-        if (!filter.posiljalac.isNullOrBlank()) spec = spec.and(MerenjeSpecification.textLike("posiljalac", filter.posiljalac))
-        if (!filter.porucilac.isNullOrBlank()) spec = spec.and(MerenjeSpecification.textLike("porucilac", filter.porucilac))
-        if (!filter.primalac.isNullOrBlank()) spec = spec.and(MerenjeSpecification.textLike("primalac", filter.primalac))
-        if (!filter.vozac.isNullOrBlank()) spec = spec.and(MerenjeSpecification.textLike("vozac", filter.vozac))
+        if (!filter.roba.isNullOrBlank()) spec = spec.and(MerenjeSpecification.textFilter("roba", filter.roba))
+        if (!filter.registracija.isNullOrBlank()) spec = spec.and(MerenjeSpecification.textFilter("registracija", filter.registracija))
+        if (!filter.prevoznik.isNullOrBlank()) spec = spec.and(MerenjeSpecification.textFilter("prevoznik", filter.prevoznik))
+        if (!filter.posiljalac.isNullOrBlank()) spec = spec.and(MerenjeSpecification.textFilter("posiljalac", filter.posiljalac))
+        if (!filter.porucilac.isNullOrBlank()) spec = spec.and(MerenjeSpecification.textFilter("porucilac", filter.porucilac))
+        if (!filter.primalac.isNullOrBlank()) spec = spec.and(MerenjeSpecification.textFilter("primalac", filter.primalac))
+        if (!filter.vozac.isNullOrBlank()) spec = spec.and(MerenjeSpecification.textFilter("vozac", filter.vozac))
 
         val direction = if (filter.sortOrder.equals("ASC", ignoreCase = true)) Sort.Direction.ASC else Sort.Direction.DESC
         val pageable = PageRequest.of(filter.page - 1, filter.pageSize, Sort.by(direction, filter.sortBy))
@@ -149,6 +156,51 @@ class MeasurementService(
         if (!filter.porucilac.isNullOrBlank()) filtersApplied["porucilac"] = filter.porucilac
         if (!filter.primalac.isNullOrBlank()) filtersApplied["primalac"] = filter.primalac
         if (!filter.vozac.isNullOrBlank()) filtersApplied["vozac"] = filter.vozac
+
+        return MeasurementsResponse(
+            data = result.content.map { it.toDto() },
+            pagination = PaginationMeta(
+                totalCount = result.totalElements,
+                page = filter.page,
+                pageSize = filter.pageSize,
+                totalPages = result.totalPages
+            ),
+            filtersApplied = filtersApplied
+        )
+    }
+
+    @Transactional(readOnly = true)
+    fun queryMyMeasurements(filter: MeasurementFilterRequest, email: String): MeasurementsResponse {
+        val user = userRepository.findByEmail(email)
+            ?: throw NoSuchElementException("User not found")
+
+        if (filter.sortBy !in SORT_WHITELIST) {
+            throw IllegalArgumentException("Invalid sortBy field: ${filter.sortBy}. Allowed: $SORT_WHITELIST")
+        }
+
+        var spec: Specification<Merenje> = MerenjeSpecification.byVozacUserId(user.id!!)
+        if (filter.datumOd != null) spec = spec.and(MerenjeSpecification.datumOd(filter.datumOd))
+        if (filter.datumDo != null) spec = spec.and(MerenjeSpecification.datumDo(filter.datumDo))
+        if (!filter.roba.isNullOrBlank()) spec = spec.and(MerenjeSpecification.textFilter("roba", filter.roba))
+        if (!filter.registracija.isNullOrBlank()) spec = spec.and(MerenjeSpecification.textFilter("registracija", filter.registracija))
+        if (!filter.prevoznik.isNullOrBlank()) spec = spec.and(MerenjeSpecification.textFilter("prevoznik", filter.prevoznik))
+        if (!filter.posiljalac.isNullOrBlank()) spec = spec.and(MerenjeSpecification.textFilter("posiljalac", filter.posiljalac))
+        if (!filter.porucilac.isNullOrBlank()) spec = spec.and(MerenjeSpecification.textFilter("porucilac", filter.porucilac))
+        if (!filter.primalac.isNullOrBlank()) spec = spec.and(MerenjeSpecification.textFilter("primalac", filter.primalac))
+
+        val direction = if (filter.sortOrder.equals("ASC", ignoreCase = true)) Sort.Direction.ASC else Sort.Direction.DESC
+        val pageable = PageRequest.of(filter.page - 1, filter.pageSize, Sort.by(direction, filter.sortBy))
+        val result = repository.findAll(spec, pageable)
+
+        val filtersApplied = mutableMapOf<String, String>()
+        if (filter.datumOd != null) filtersApplied["datumOd"] = filter.datumOd.toString()
+        if (filter.datumDo != null) filtersApplied["datumDo"] = filter.datumDo.toString()
+        if (!filter.roba.isNullOrBlank()) filtersApplied["roba"] = filter.roba
+        if (!filter.registracija.isNullOrBlank()) filtersApplied["registracija"] = filter.registracija
+        if (!filter.prevoznik.isNullOrBlank()) filtersApplied["prevoznik"] = filter.prevoznik
+        if (!filter.posiljalac.isNullOrBlank()) filtersApplied["posiljalac"] = filter.posiljalac
+        if (!filter.porucilac.isNullOrBlank()) filtersApplied["porucilac"] = filter.porucilac
+        if (!filter.primalac.isNullOrBlank()) filtersApplied["primalac"] = filter.primalac
 
         return MeasurementsResponse(
             data = result.content.map { it.toDto() },
@@ -260,6 +312,20 @@ class MeasurementService(
         )
     }
 
+    @Transactional
+    fun relinkDriverMeasurements(userId: Long, oldDriverName: String?, newDriverName: String?) {
+        // Unlink old measurements if the driverName changed
+        if (!oldDriverName.isNullOrBlank() && oldDriverName != newDriverName) {
+            val unlinked = repository.unlinkMeasurementsFromDriver(userId)
+            logger.info("Unlinked $unlinked measurements from user $userId (old driverName: $oldDriverName)")
+        }
+        // Link new measurements
+        if (!newDriverName.isNullOrBlank()) {
+            val linked = repository.linkMeasurementsToDriver(userId, newDriverName)
+            logger.info("Linked $linked measurements to user $userId (driverName: $newDriverName)")
+        }
+    }
+
     private fun applyRowToEntity(
         entity: Merenje,
         row: ExcelParsingService.ParsedRow,
@@ -267,20 +333,33 @@ class MeasurementService(
         reportDate: LocalDate?
     ) {
         entity.importedFile = importedFile
-        entity.datumIzvestaja = reportDate
+        entity.datumIzvestaja = row.datum ?: reportDate
         entity.merniListBr = row.merniListBr
-        entity.posiljalac = row.posiljalac
-        entity.porucilac = row.porucilac
-        entity.primalac = row.primalac
-        entity.roba = row.roba
+        entity.posiljalac = labelService.resolveValue("posiljalac", row.posiljalac)
+        entity.porucilac = labelService.resolveValue("porucilac", row.porucilac)
+        entity.primalac = labelService.resolveValue("primalac", row.primalac)
+        entity.roba = labelService.resolveValue("roba", row.roba)
         entity.bruto = row.bruto
         entity.tara = row.tara
         entity.neto = row.neto
-        entity.prevoznik = row.prevoznik
-        entity.registracija = row.registracija
-        entity.prikolica = row.prikolica
-        entity.vozac = row.vozac
-        entity.brojLicneKarte = row.brojLicneKarte
+        entity.prevoznik = labelService.resolveValue("prevoznik", row.prevoznik)
+        entity.registracija = labelService.resolveValue("registracija", normalizeRegistrationValue(row.registracija))
+        entity.vozac = labelService.resolveValue("vozac", row.vozac)
+        entity.mesto = labelService.resolveValue("mesto", row.mesto)
+
+        // Link to driver user if driverName matches
+        if (!entity.vozac.isNullOrBlank()) {
+            entity.vozacUser = userRepository.findByDriverNameIgnoreCase(entity.vozac!!)
+        }
+    }
+
+    /**
+     * Normalizes a registration plate format: uppercase, groups separated by dashes.
+     * This is applied before label resolution so that "SA 194 GB" becomes "SA-194-GB".
+     */
+    private fun normalizeRegistrationValue(value: String?): String? {
+        if (value.isNullOrBlank()) return value
+        return com.rkl.backend.util.TextUtils.normalizeRegistration(value)
     }
 
     private fun Merenje.toDto(): MeasurementDto = MeasurementDto(
@@ -298,9 +377,8 @@ class MeasurementService(
         neto = neto,
         prevoznik = prevoznik,
         registracija = registracija,
-        prikolica = prikolica,
         vozac = vozac,
-        brojLicneKarte = brojLicneKarte,
+        mesto = mesto,
         potpis = potpis,
         createdAt = createdAt?.toString(),
         updatedAt = updatedAt?.toString()

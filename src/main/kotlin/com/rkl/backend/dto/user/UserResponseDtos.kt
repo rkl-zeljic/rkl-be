@@ -8,6 +8,8 @@ data class UserResponseDTO(
     val id: Long,
     val email: String,
     val type: UserType = UserType.DRIVER,
+    val driverName: String? = null,
+    val signature: String? = null,
     val createdAt: Instant?
 )
 

@@ -21,6 +21,7 @@ class UserServiceImpl(
     private val userDao: UserDao,
     private val userMapper: UserMapper,
     private val userValidator: UserValidator,
+    private val measurementService: com.rkl.backend.service.MeasurementService,
 ) : UserService {
 
     val log: Logger = LoggerFactory.getLogger(this.javaClass)
@@ -42,7 +43,11 @@ class UserServiceImpl(
         }
 
         val newUser = userMapper.mapToEntity(createUserRequestDTO)
-        return userDao.create(newUser)
+        val created = userDao.create(newUser)
+        if (!created.driverName.isNullOrBlank()) {
+            measurementService.relinkDriverMeasurements(created.id!!, null, created.driverName)
+        }
+        return created
             .let(userMapper::mapToDTO)
             .also {
                 log.info("User with ID ${it.id} has been created")
@@ -57,12 +62,18 @@ class UserServiceImpl(
             userValidator.validateUserIsAdmin()
         }
 
+        val oldDriverName = userDB.driverName
         userDB.also {
             updateUserRequestDTO.email?.run { it.email = this }
             updateUserRequestDTO.type?.run { it.type = this }
+            updateUserRequestDTO.driverName?.run { it.driverName = this }
         }
 
-        return userDao.update(userDB)
+        val updated = userDao.update(userDB)
+        if (updateUserRequestDTO.driverName != null && oldDriverName != updated.driverName) {
+            measurementService.relinkDriverMeasurements(updated.id!!, oldDriverName, updated.driverName)
+        }
+        return updated
             .let(userMapper::mapToDTO)
             .also {
                 log.info("User with ID ${it.id} has been updated")
@@ -91,6 +102,16 @@ class UserServiceImpl(
             .let(userMapper::mapToDTO)
             .also {
                 log.info("Current user with ID ${it.id} has been updated")
+            }
+    }
+
+    override fun updateCurrentUserSignature(email: String, signature: String?): UserResponseDTO {
+        val userDB = userDao.findByName(email)
+        userDB.signature = signature
+        return userDao.update(userDB)
+            .let(userMapper::mapToDTO)
+            .also {
+                log.info("Signature updated for user with ID ${it.id}")
             }
     }
 

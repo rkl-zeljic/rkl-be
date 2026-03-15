@@ -8,4 +8,6 @@ import org.springframework.stereotype.Repository
 interface ImportedFileRepository : JpaRepository<ImportedFile, Long> {
 
     fun findAllByOrderByCreatedAtDesc(): List<ImportedFile>
+
+    fun existsByOriginalFilename(originalFilename: String): Boolean
 }

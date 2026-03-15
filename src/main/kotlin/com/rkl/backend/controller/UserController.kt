@@ -55,6 +55,14 @@ class UserController(
         return userService.getCurrentUser(authentication.name)
     }
 
+    @PatchMapping("/me/signature")
+    fun updateMySignature(
+        authentication: Authentication,
+        @RequestBody request: Map<String, String?>
+    ): UserResponseDTO {
+        return userService.updateCurrentUserSignature(authentication.name, request["signature"])
+    }
+
     @PostMapping
     fun createUser(@Valid @RequestBody request: CreateUserRequestDTO): UserResponseDTO {
         return userService.create(request)

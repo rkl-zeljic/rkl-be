@@ -3,6 +3,7 @@ package com.rkl.backend.controller
 import com.rkl.backend.dto.measurement.*
 import com.rkl.backend.service.MeasurementService
 import jakarta.validation.Valid
+import org.springframework.security.core.Authentication
 import org.springframework.web.bind.annotation.*
 
 @RestController
@@ -22,6 +23,14 @@ class MeasurementController(
     @GetMapping("/measurements")
     fun getMeasurements(@Valid filter: MeasurementFilterRequest): MeasurementsResponse {
         return measurementService.queryMeasurements(filter)
+    }
+
+    @GetMapping("/measurements/my")
+    fun getMyMeasurements(
+        @Valid filter: MeasurementFilterRequest,
+        authentication: Authentication
+    ): MeasurementsResponse {
+        return measurementService.queryMyMeasurements(filter, authentication.name)
     }
 
     @GetMapping("/measurements/stats")

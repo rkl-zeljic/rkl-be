@@ -15,9 +15,10 @@ class ExcelParsingService {
     private val logger = LoggerFactory.getLogger(ExcelParsingService::class.java)
 
     companion object {
-        const val HEADER_MARKER = "Merni list br"
+        const val HEADER_MARKER = "Datum"
         const val MAX_HEADER_SCAN_ROWS = 250
         val EXPECTED_COLUMNS = listOf(
+            "Datum",
             "Merni list br",
             "Pošiljalac",
             "Poručilac",
@@ -28,13 +29,13 @@ class ExcelParsingService {
             "Neto",
             "Prevoznik",
             "Registracija",
-            "Prikolica",
             "Vozač",
-            "Broj lične karte"
+            "Mesto"
         )
     }
 
     data class ParsedRow(
+        val datum: java.time.LocalDate?,
         val merniListBr: Int,
         val posiljalac: String?,
         val porucilac: String?,
@@ -45,9 +46,8 @@ class ExcelParsingService {
         val neto: Double?,
         val prevoznik: String?,
         val registracija: String?,
-        val prikolica: String?,
         val vozac: String?,
-        val brojLicneKarte: String?
+        val mesto: String?
     )
 
     fun parseExcel(file: File): List<ParsedRow> {
@@ -57,6 +57,15 @@ class ExcelParsingService {
             val headerRowIndex = findHeaderRow(sheet)
             val headerRow = sheet.getRow(headerRowIndex)
             val columnIndex = buildColumnIndex(headerRow)
+
+            val missingColumns = EXPECTED_COLUMNS.filter { it !in columnIndex }
+            if (missingColumns.isNotEmpty()) {
+                throw IllegalArgumentException(
+                    "Sledeća obavezna polja ne postoje u fajlu: ${missingColumns.joinToString(", ")}. " +
+                    "Očekivane kolone su: ${EXPECTED_COLUMNS.joinToString(", ")}"
+                )
+            }
+
             val rows = mutableListOf<ParsedRow>()
 
             for (i in (headerRowIndex + 1)..sheet.lastRowNum) {
@@ -83,13 +92,18 @@ class ExcelParsingService {
         val scanLimit = minOf(MAX_HEADER_SCAN_ROWS, sheet.lastRowNum + 1)
         for (i in 0 until scanLimit) {
             val row = sheet.getRow(i) ?: continue
-            val cell = row.getCell(0) ?: continue
-            val value = getCellStringValue(cell)
-            if (value != null && value.trim().equals(HEADER_MARKER, ignoreCase = true)) {
-                return i
+            for (j in 0..row.lastCellNum) {
+                val cell = row.getCell(j) ?: continue
+                val value = getCellStringValue(cell)?.trim() ?: continue
+                if (EXPECTED_COLUMNS.any { value.equals(it, ignoreCase = true) }) {
+                    return i
+                }
             }
         }
-        throw IllegalArgumentException("Header row with '$HEADER_MARKER' not found in first $MAX_HEADER_SCAN_ROWS rows")
+        throw IllegalArgumentException(
+            "Nije pronađen red sa zaglavljem tabele u prvih $MAX_HEADER_SCAN_ROWS redova. " +
+            "Fajl mora sadržati zaglavlje sa sledećim kolonama: ${EXPECTED_COLUMNS.joinToString(", ")}"
+        )
     }
 
     private fun buildColumnIndex(headerRow: Row): Map<String, Int> {
@@ -108,11 +122,12 @@ class ExcelParsingService {
     }
 
     private fun parseRow(row: Row, columnIndex: Map<String, Int>): ParsedRow? {
-        val merniListIdx = columnIndex[HEADER_MARKER] ?: return null
+        val merniListIdx = columnIndex["Merni list br"] ?: return null
         val merniListCell = row.getCell(merniListIdx) ?: return null
         val merniListBr = getNumericValue(merniListCell)?.toInt() ?: return null
 
         return ParsedRow(
+            datum = getDateFromColumn(row, columnIndex, "Datum"),
             merniListBr = merniListBr,
             posiljalac = TextUtils.normalizeWhitespace(getStringFromColumn(row, columnIndex, "Pošiljalac")),
             porucilac = TextUtils.normalizeWhitespace(getStringFromColumn(row, columnIndex, "Poručilac")),
@@ -123,10 +138,40 @@ class ExcelParsingService {
             neto = getNumericFromColumn(row, columnIndex, "Neto"),
             prevoznik = TextUtils.normalizeWhitespace(getStringFromColumn(row, columnIndex, "Prevoznik")),
             registracija = TextUtils.normalizeWhitespace(getStringFromColumn(row, columnIndex, "Registracija")),
-            prikolica = TextUtils.normalizeWhitespace(getStringFromColumn(row, columnIndex, "Prikolica")),
             vozac = TextUtils.normalizeWhitespace(getStringFromColumn(row, columnIndex, "Vozač")),
-            brojLicneKarte = TextUtils.normalizeWhitespace(getStringFromColumn(row, columnIndex, "Broj lične karte"))
+            mesto = TextUtils.normalizeWhitespace(getStringFromColumn(row, columnIndex, "Mesto"))
         )
+    }
+
+    private fun getDateFromColumn(row: Row, columnIndex: Map<String, Int>, column: String): java.time.LocalDate? {
+        val idx = columnIndex[column] ?: return null
+        val cell = row.getCell(idx) ?: return null
+        return try {
+            when (cell.cellType) {
+                CellType.NUMERIC -> {
+                    if (DateUtil.isCellDateFormatted(cell)) {
+                        cell.localDateTimeCellValue.toLocalDate()
+                    } else {
+                        null
+                    }
+                }
+                CellType.STRING -> {
+                    val str = cell.stringCellValue.trim()
+                    try {
+                        java.time.LocalDate.parse(str, java.time.format.DateTimeFormatter.ofPattern("dd.MM.yyyy"))
+                    } catch (_: Exception) {
+                        try {
+                            java.time.LocalDate.parse(str)
+                        } catch (_: Exception) {
+                            null
+                        }
+                    }
+                }
+                else -> null
+            }
+        } catch (_: Exception) {
+            null
+        }
     }
 
     private fun getStringFromColumn(row: Row, columnIndex: Map<String, Int>, column: String): String? {

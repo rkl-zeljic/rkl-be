@@ -13,7 +13,8 @@ import java.time.LocalDateTime
     indexes = [
         Index(name = "ix_merenja_datum", columnList = "datum_izvestaja"),
         Index(name = "ix_merenja_roba", columnList = "roba"),
-        Index(name = "ix_merenja_registracija", columnList = "registracija")
+        Index(name = "ix_merenja_registracija", columnList = "registracija"),
+        Index(name = "ix_merenja_vozac_user", columnList = "vozac_user_id")
     ]
 )
 class Merenje(
@@ -50,12 +51,13 @@ class Merenje(
 
     var registracija: String? = null,
 
-    var prikolica: String? = null,
-
     var vozac: String? = null,
 
-    @Column(name = "broj_licne_karte")
-    var brojLicneKarte: String? = null,
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "vozac_user_id")
+    var vozacUser: RklUser? = null,
+
+    var mesto: String? = null,
 
     var potpis: String? = null,
 

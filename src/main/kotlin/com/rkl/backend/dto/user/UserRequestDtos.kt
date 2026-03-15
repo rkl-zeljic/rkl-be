@@ -12,6 +12,7 @@ data class CreateUserRequestDTO(
     @field:Email(message = "Invalid email format")
     val email: String,
     val type: UserType = UserType.DRIVER,
+    val driverName: String? = null,
 )
 
 @JsonInclude(JsonInclude.Include.NON_NULL)
@@ -21,6 +22,7 @@ data class UpdateUserRequestDTO(
     @field:Email(message = "Invalid email format")
     val email: String? = null,
     val type: UserType? = null,
+    val driverName: String? = null,
 )
 
 @JsonInclude(JsonInclude.Include.NON_NULL)

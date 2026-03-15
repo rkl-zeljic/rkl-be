@@ -13,6 +13,8 @@ class UserMapper {
                 id = id!!,
                 email = email,
                 type = type,
+                driverName = driverName,
+                signature = signature,
                 createdAt = createdAt
             )
         }
@@ -21,7 +23,8 @@ class UserMapper {
     fun mapToEntity(user: CreateUserRequestDTO): RklUser {
         return RklUser(
             email = user.email,
-            type = user.type
+            type = user.type,
+            driverName = user.driverName
         )
     }
 }

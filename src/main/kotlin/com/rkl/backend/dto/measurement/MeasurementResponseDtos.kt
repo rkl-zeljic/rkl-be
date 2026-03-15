@@ -28,9 +28,8 @@ data class MeasurementDto(
     val neto: Double?,
     val prevoznik: String?,
     val registracija: String?,
-    val prikolica: String?,
     val vozac: String?,
-    val brojLicneKarte: String?,
+    val mesto: String?,
     val potpis: String?,
     val createdAt: String?,
     val updatedAt: String?

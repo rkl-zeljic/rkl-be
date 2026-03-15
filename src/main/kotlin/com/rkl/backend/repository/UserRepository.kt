@@ -8,4 +8,5 @@ import org.springframework.stereotype.Repository
 @Repository
 interface UserRepository : JpaRepository<RklUser, Long>, JpaSpecificationExecutor<RklUser> {
     fun findByEmail(email: String): RklUser?
+    fun findByDriverNameIgnoreCase(driverName: String): RklUser?
 }

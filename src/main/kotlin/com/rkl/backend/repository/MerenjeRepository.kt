@@ -79,6 +79,14 @@ interface MerenjeRepository : JpaRepository<Merenje, Long>, JpaSpecificationExec
     @Query("UPDATE Merenje m SET m.potpis = :signature WHERE m.id = :id")
     fun updateSignature(@Param("id") id: Long, @Param("signature") signature: String?)
 
+    @Modifying
+    @Query("UPDATE Merenje m SET m.vozacUser.id = :userId WHERE LOWER(m.vozac) = LOWER(:driverName) AND (m.vozacUser IS NULL OR m.vozacUser.id <> :userId)")
+    fun linkMeasurementsToDriver(@Param("userId") userId: Long, @Param("driverName") driverName: String): Int
+
+    @Modifying
+    @Query("UPDATE Merenje m SET m.vozacUser = NULL WHERE m.vozacUser.id = :userId")
+    fun unlinkMeasurementsFromDriver(@Param("userId") userId: Long): Int
+
     @Query(
         value = """
             SELECT TO_CHAR(datum_izvestaja, :format) AS period, COUNT(*) AS count
