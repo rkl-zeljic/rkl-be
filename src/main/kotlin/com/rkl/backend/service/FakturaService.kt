@@ -15,7 +15,9 @@ import java.time.LocalDate
 @Service
 class FakturaService(
     private val fakturaRepository: FakturaRepository,
-    private val merenjeRepository: MerenjeRepository
+    private val merenjeRepository: MerenjeRepository,
+    private val primalacService: PrimalacService,
+    private val emailService: EmailService
 ) {
 
     @Transactional(readOnly = true)
@@ -77,6 +79,18 @@ class FakturaService(
         }
 
         val saved = fakturaRepository.save(faktura)
+
+        // Send email notification to primalac
+        val primalac = primalacService.findByNaziv(faktura.porucilac)
+        if (primalac?.email != null) {
+            emailService.sendFakturaStatusEmail(
+                toEmail = primalac.email!!,
+                primalacNaziv = primalac.naziv,
+                brojFakture = faktura.brojFakture,
+                newStatus = newStatus.name
+            )
+        }
+
         return FakturaDetailResponse(data = saved.toDto())
     }
 
