@@ -11,9 +11,6 @@ env:
 jobs:
   maven-build-test:
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      packages: write
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -36,7 +33,7 @@ jobs:
         with:
           name: Package
           path: target/*.jar
-          retention-days: 2
+          retention-days: 1
 
   docker-build-push-ghcr:
     needs: maven-build-test
