@@ -15,6 +15,7 @@ import org.springframework.data.domain.Page
 import org.springframework.data.domain.Pageable
 import org.springframework.security.access.prepost.PreAuthorize
 import org.springframework.stereotype.Service
+import org.springframework.transaction.annotation.Transactional
 
 @Service
 class UserServiceImpl(
@@ -80,6 +81,7 @@ class UserServiceImpl(
             }
     }
 
+    @Transactional
     @PreAuthorize("hasAnyRole('ADMIN')")
     override fun delete(id: Long) {
         userDao.deleteById(id)

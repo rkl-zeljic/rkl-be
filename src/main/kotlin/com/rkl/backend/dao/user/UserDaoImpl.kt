@@ -5,6 +5,9 @@ import com.rkl.backend.enums.UserType
 import com.rkl.backend.exception.ErrorCode.Companion.ENTITY_ALREADY_EXIST_ERROR
 import com.rkl.backend.exception.ErrorCode.Companion.ENTITY_DOES_NOT_EXIST_ERROR
 import com.rkl.backend.exception.base.NotExistsException
+import com.rkl.backend.repository.MerenjeRepository
+import com.rkl.backend.repository.OtpremnicaRepository
+import com.rkl.backend.repository.PrevoznicaRepository
 import com.rkl.backend.repository.UserRepository
 import com.rkl.backend.searchfilter.criteria.builder.UserFilterCriteriaBuilder
 import com.rkl.backend.searchfilter.dto.UserFilter
@@ -18,6 +21,9 @@ import kotlin.jvm.optionals.getOrElse
 class UserDaoImpl(
     private val userRepository: UserRepository,
     private val userFilterCriteriaBuilder: UserFilterCriteriaBuilder,
+    private val prevoznicaRepository: PrevoznicaRepository,
+    private val otpremnicaRepository: OtpremnicaRepository,
+    private val merenjeRepository: MerenjeRepository,
 ) : UserDao {
     override fun findAll(pageable: Pageable, userFilter: UserFilter): Page<RklUser> {
         return userRepository.findAll(userFilterCriteriaBuilder.buildQuery(userFilter), pageable)
@@ -47,6 +53,9 @@ class UserDaoImpl(
 
     override fun deleteById(id: Long) {
         assertExistsById(id)
+        prevoznicaRepository.unlinkFromUser(id)
+        otpremnicaRepository.unlinkFromUser(id)
+        merenjeRepository.unlinkMeasurementsFromDriver(id)
         userRepository.deleteById(id)
     }
 
