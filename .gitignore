@@ -33,3 +33,6 @@ build/
 .vscode/
 
 .claude
+
+### Local config ###
+application-local.yml

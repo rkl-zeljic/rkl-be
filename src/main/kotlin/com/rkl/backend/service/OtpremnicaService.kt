@@ -29,6 +29,14 @@ class OtpremnicaService(
     }
 
     @Transactional(readOnly = true)
+    fun getMyOtpremnice(email: String): OtpremniceResponse {
+        val user = userRepository.findByEmail(email)
+            ?: throw NoSuchElementException("Korisnik nije pronađen")
+        val otpremnice = otpremnicaRepository.findByVozacUserOrderByCreatedAtDesc(user)
+        return OtpremniceResponse(data = otpremnice.map { it.toDto() })
+    }
+
+    @Transactional(readOnly = true)
     fun getOtpremnica(id: Long): OtpremnicaDetailResponse {
         val otpremnica = otpremnicaRepository.findById(id).orElseThrow {
             NoSuchElementException("Otpremnica sa id $id nije pronađena")

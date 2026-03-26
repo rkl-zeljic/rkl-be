@@ -1,11 +1,13 @@
 package com.rkl.backend.service
 
+import com.rkl.backend.dto.common.PaginationMeta
 import com.rkl.backend.dto.faktura.*
 import com.rkl.backend.entity.Faktura
 import com.rkl.backend.entity.FakturaStatus
 import com.rkl.backend.repository.FakturaRepository
 import com.rkl.backend.repository.MerenjeRepository
 import com.rkl.backend.repository.MerenjeSpecification
+import org.springframework.data.domain.PageRequest
 import org.springframework.data.domain.Sort
 import org.springframework.data.jpa.domain.Specification
 import org.springframework.stereotype.Service
@@ -16,15 +18,39 @@ import java.time.LocalDate
 class FakturaService(
     private val fakturaRepository: FakturaRepository,
     private val merenjeRepository: MerenjeRepository,
-    private val primalacService: PrimalacService,
-    private val emailService: EmailService
+    private val emailService: EmailService,
+    private val fakturaExcelService: FakturaExcelService,
+    private val fakturaPdfService: FakturaPdfService
 ) {
 
+    companion object {
+        val SORT_WHITELIST = setOf(
+            "id", "brojFakture", "porucilac", "datumOd", "datumDo",
+            "status", "datumSlanja", "measurementCount", "createdAt"
+        )
+    }
+
     @Transactional(readOnly = true)
-    fun listFakture(): FaktureResponse {
-        val fakture = fakturaRepository.findAllByOrderByCreatedAtDesc()
+    fun listFakture(page: Int, pageSize: Int, sortBy: String, sortOrder: String): FaktureResponse {
+        val safeSortBy = if (sortBy in SORT_WHITELIST) sortBy else "createdAt"
+        val direction = if (sortOrder.equals("ASC", ignoreCase = true)) Sort.Direction.ASC else Sort.Direction.DESC
+        val pageable = PageRequest.of(page - 1, pageSize, Sort.by(direction, safeSortBy))
+
+        val pageResult = fakturaRepository.findAll(pageable)
+
+        val dtos = pageResult.content.map { faktura ->
+            val fields = getDistinctMeasurementFields(faktura.porucilac, faktura.datumOd, faktura.datumDo)
+            faktura.toDto(fields)
+        }
+
         return FaktureResponse(
-            data = fakture.map { it.toDto() }
+            data = dtos,
+            pagination = PaginationMeta(
+                totalCount = pageResult.totalElements,
+                page = page,
+                pageSize = pageSize,
+                totalPages = pageResult.totalPages
+            )
         )
     }
 
@@ -79,19 +105,37 @@ class FakturaService(
         }
 
         val saved = fakturaRepository.save(faktura)
+        return FakturaDetailResponse(data = saved.toDto())
+    }
 
-        // Send email notification to primalac
-        val primalac = primalacService.findByNaziv(faktura.porucilac)
-        if (primalac?.email != null) {
-            emailService.sendFakturaStatusEmail(
-                toEmail = primalac.email!!,
-                primalacNaziv = primalac.naziv,
-                brojFakture = faktura.brojFakture,
-                newStatus = newStatus.name
+    fun sendFakturaEmail(id: Long, request: SendFakturaEmailRequest): SendFakturaEmailResponse {
+        val faktura = fakturaRepository.findById(id).orElseThrow {
+            NoSuchElementException("Faktura sa id $id nije pronađena")
+        }
+
+        val (fileBytes, fileName, mimeType) = when (request.format.lowercase()) {
+            "excel" -> Triple(
+                fakturaExcelService.generateExcel(faktura),
+                "${faktura.brojFakture}.xlsx",
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            )
+            else -> Triple(
+                fakturaPdfService.generatePdf(faktura),
+                "${faktura.brojFakture}.pdf",
+                "application/pdf"
             )
         }
 
-        return FakturaDetailResponse(data = saved.toDto())
+        emailService.sendFakturaWithAttachment(
+            toEmail = request.email,
+            brojFakture = faktura.brojFakture,
+            porucilac = faktura.porucilac,
+            fileBytes = fileBytes,
+            fileName = fileName,
+            mimeType = mimeType
+        )
+
+        return SendFakturaEmailResponse(message = "Email poslat na ${request.email}")
     }
 
     @Transactional
@@ -116,7 +160,23 @@ class FakturaService(
         return "F-%04d".format(nextNumber)
     }
 
-    private fun Faktura.toDto(): FakturaDto = FakturaDto(
+    private data class MeasurementFields(
+        val robaList: List<String>,
+        val prevoznikList: List<String>,
+        val primalacList: List<String>,
+        val posiljalacList: List<String>
+    )
+
+    private fun getDistinctMeasurementFields(porucilac: String, datumOd: LocalDate, datumDo: LocalDate): MeasurementFields {
+        return MeasurementFields(
+            robaList = merenjeRepository.findDistinctRobaByFaktura(porucilac, datumOd, datumDo),
+            prevoznikList = merenjeRepository.findDistinctPrevoznikByFaktura(porucilac, datumOd, datumDo),
+            primalacList = merenjeRepository.findDistinctPrimalacByFaktura(porucilac, datumOd, datumDo),
+            posiljalacList = merenjeRepository.findDistinctPosiljalacByFaktura(porucilac, datumOd, datumDo)
+        )
+    }
+
+    private fun Faktura.toDto(fields: MeasurementFields? = null): FakturaDto = FakturaDto(
         id = id,
         brojFakture = brojFakture,
         porucilac = porucilac,
@@ -127,6 +187,10 @@ class FakturaService(
         napomena = napomena,
         createdBy = createdBy,
         measurementCount = measurementCount,
+        robaList = fields?.robaList ?: emptyList(),
+        prevoznikList = fields?.prevoznikList ?: emptyList(),
+        primalacList = fields?.primalacList ?: emptyList(),
+        posiljalacList = fields?.posiljalacList ?: emptyList(),
         createdAt = createdAt?.toString(),
         updatedAt = updatedAt?.toString()
     )

@@ -24,6 +24,11 @@ class OtpremnicaController(
         return otpremnicaService.listOtpremnice()
     }
 
+    @GetMapping("/my")
+    fun getMyOtpremnice(authentication: Authentication): OtpremniceResponse {
+        return otpremnicaService.getMyOtpremnice(authentication.name)
+    }
+
     @GetMapping("/{id}")
     fun getOtpremnica(@PathVariable id: Long): OtpremnicaDetailResponse {
         return otpremnicaService.getOtpremnica(id)

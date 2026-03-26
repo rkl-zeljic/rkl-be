@@ -1,5 +1,6 @@
 package com.rkl.backend.dto.faktura
 
+import com.rkl.backend.dto.common.PaginationMeta
 import org.springframework.format.annotation.DateTimeFormat
 import java.time.LocalDate
 
@@ -30,13 +31,18 @@ data class FakturaDto(
     val napomena: String?,
     val createdBy: String?,
     val measurementCount: Int,
+    val robaList: List<String> = emptyList(),
+    val prevoznikList: List<String> = emptyList(),
+    val primalacList: List<String> = emptyList(),
+    val posiljalacList: List<String> = emptyList(),
     val createdAt: String?,
     val updatedAt: String?
 )
 
 data class FaktureResponse(
     val status: String = "success",
-    val data: List<FakturaDto>
+    val data: List<FakturaDto>,
+    val pagination: PaginationMeta? = null
 )
 
 data class FakturaDetailResponse(
@@ -47,4 +53,14 @@ data class FakturaDetailResponse(
 data class FakturaDeleteResponse(
     val status: String = "success",
     val id: Long
+)
+
+data class SendFakturaEmailRequest(
+    val email: String,
+    val format: String = "pdf" // "pdf" or "excel"
+)
+
+data class SendFakturaEmailResponse(
+    val status: String = "success",
+    val message: String
 )

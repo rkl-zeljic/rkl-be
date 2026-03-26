@@ -57,6 +57,18 @@ interface MerenjeRepository : JpaRepository<Merenje, Long>, JpaSpecificationExec
     @Query("SELECT DISTINCT m.roba FROM Merenje m WHERE m.roba IS NOT NULL AND m.roba <> '' ORDER BY m.roba ASC")
     fun findDistinctRoba(): List<String>
 
+    @Query("SELECT DISTINCT m.roba FROM Merenje m WHERE m.porucilac = :porucilac AND m.datumIzvestaja >= :datumOd AND m.datumIzvestaja <= :datumDo AND m.roba IS NOT NULL AND m.roba <> ''")
+    fun findDistinctRobaByFaktura(@Param("porucilac") porucilac: String, @Param("datumOd") datumOd: LocalDate, @Param("datumDo") datumDo: LocalDate): List<String>
+
+    @Query("SELECT DISTINCT m.prevoznik FROM Merenje m WHERE m.porucilac = :porucilac AND m.datumIzvestaja >= :datumOd AND m.datumIzvestaja <= :datumDo AND m.prevoznik IS NOT NULL AND m.prevoznik <> ''")
+    fun findDistinctPrevoznikByFaktura(@Param("porucilac") porucilac: String, @Param("datumOd") datumOd: LocalDate, @Param("datumDo") datumDo: LocalDate): List<String>
+
+    @Query("SELECT DISTINCT m.primalac FROM Merenje m WHERE m.porucilac = :porucilac AND m.datumIzvestaja >= :datumOd AND m.datumIzvestaja <= :datumDo AND m.primalac IS NOT NULL AND m.primalac <> ''")
+    fun findDistinctPrimalacByFaktura(@Param("porucilac") porucilac: String, @Param("datumOd") datumOd: LocalDate, @Param("datumDo") datumDo: LocalDate): List<String>
+
+    @Query("SELECT DISTINCT m.posiljalac FROM Merenje m WHERE m.porucilac = :porucilac AND m.datumIzvestaja >= :datumOd AND m.datumIzvestaja <= :datumDo AND m.posiljalac IS NOT NULL AND m.posiljalac <> ''")
+    fun findDistinctPosiljalacByFaktura(@Param("porucilac") porucilac: String, @Param("datumOd") datumOd: LocalDate, @Param("datumDo") datumDo: LocalDate): List<String>
+
     @Query("SELECT DISTINCT m.registracija FROM Merenje m WHERE m.registracija IS NOT NULL AND m.registracija <> '' ORDER BY m.registracija ASC")
     fun findDistinctRegistracija(): List<String>
 
