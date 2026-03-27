@@ -21,4 +21,8 @@ interface OtpremnicaRepository : JpaRepository<Otpremnica, Long> {
     @Modifying
     @Query("UPDATE Otpremnica o SET o.vozacUser = NULL WHERE o.vozacUser.id = :userId")
     fun unlinkFromUser(@Param("userId") userId: Long): Int
+
+    @Modifying
+    @Query("UPDATE Otpremnica o SET o.potpisVozaca = :signature WHERE o.vozacUser.id = :userId AND (o.potpisVozaca IS NULL OR o.potpisVozaca = '')")
+    fun backfillDriverSignature(@Param("userId") userId: Long, @Param("signature") signature: String): Int
 }

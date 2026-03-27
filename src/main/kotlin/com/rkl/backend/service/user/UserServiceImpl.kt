@@ -7,6 +7,8 @@ import com.rkl.backend.dto.user.UpdateUserRequestDTO
 import com.rkl.backend.dto.user.UserResponseDTO
 import com.rkl.backend.enums.UserType
 import com.rkl.backend.mapper.user.UserMapper
+import com.rkl.backend.repository.OtpremnicaRepository
+import com.rkl.backend.repository.PrevoznicaRepository
 import com.rkl.backend.searchfilter.dto.UserFilter
 import com.rkl.backend.validation.user.UserValidator
 import org.slf4j.Logger
@@ -23,6 +25,8 @@ class UserServiceImpl(
     private val userMapper: UserMapper,
     private val userValidator: UserValidator,
     private val measurementService: com.rkl.backend.service.MeasurementService,
+    private val otpremnicaRepository: OtpremnicaRepository,
+    private val prevoznicaRepository: PrevoznicaRepository,
 ) : UserService {
 
     val log: Logger = LoggerFactory.getLogger(this.javaClass)
@@ -107,10 +111,21 @@ class UserServiceImpl(
             }
     }
 
+    @Transactional
     override fun updateCurrentUserSignature(email: String, signature: String?): UserResponseDTO {
         val userDB = userDao.findByName(email)
         userDB.signature = signature
-        return userDao.update(userDB)
+        val updated = userDao.update(userDB)
+
+        if (!signature.isNullOrBlank()) {
+            val otpCount = otpremnicaRepository.backfillDriverSignature(updated.id!!, signature)
+            val prevCount = prevoznicaRepository.backfillDriverSignature(updated.id!!, signature)
+            if (otpCount > 0 || prevCount > 0) {
+                log.info("Backfilled driver signature for user ${updated.id}: $otpCount otpremnice, $prevCount prevoznice")
+            }
+        }
+
+        return updated
             .let(userMapper::mapToDTO)
             .also {
                 log.info("Signature updated for user with ID ${it.id}")

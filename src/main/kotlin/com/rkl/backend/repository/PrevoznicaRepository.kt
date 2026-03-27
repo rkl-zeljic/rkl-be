@@ -21,4 +21,8 @@ interface PrevoznicaRepository : JpaRepository<Prevoznica, Long> {
     @Modifying
     @Query("UPDATE Prevoznica p SET p.vozacUser = NULL WHERE p.vozacUser.id = :userId")
     fun unlinkFromUser(@Param("userId") userId: Long): Int
+
+    @Modifying
+    @Query("UPDATE Prevoznica p SET p.potpisVozaca = :signature WHERE p.vozacUser.id = :userId AND (p.potpisVozaca IS NULL OR p.potpisVozaca = '')")
+    fun backfillDriverSignature(@Param("userId") userId: Long, @Param("signature") signature: String): Int
 }
