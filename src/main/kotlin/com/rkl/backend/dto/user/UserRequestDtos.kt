@@ -8,11 +8,12 @@ import jakarta.validation.constraints.NotBlank
 import java.util.Optional
 
 data class CreateUserRequestDTO(
-    @field:NotBlank(message = "Email is required")
     @field:Email(message = "Invalid email format")
-    val email: String,
+    val email: String? = null,
     val type: UserType = UserType.DRIVER,
     val driverName: String? = null,
+    val username: String? = null,
+    val password: String? = null,
 )
 
 @JsonInclude(JsonInclude.Include.NON_NULL)
@@ -23,6 +24,8 @@ data class UpdateUserRequestDTO(
     val email: String? = null,
     val type: UserType? = null,
     val driverName: String? = null,
+    val username: String? = null,
+    val password: String? = null,
 )
 
 @JsonInclude(JsonInclude.Include.NON_NULL)

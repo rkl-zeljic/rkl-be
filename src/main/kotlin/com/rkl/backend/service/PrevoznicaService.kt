@@ -68,7 +68,7 @@ class PrevoznicaService(
             jedMere = request.jedMere,
             stvarnaTezina = request.stvarnaTezina,
             vozacUser = vozacUser,
-            vozacIme = vozacUser.driverName ?: vozacUser.email,
+            vozacIme = vozacUser.driverName ?: vozacUser.email ?: vozacUser.username ?: "",
             potpisVozaca = vozacUser.signature,
             status = PrevoznicaStatus.KREIRANA,
             createdBy = createdBy

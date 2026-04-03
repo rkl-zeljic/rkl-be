@@ -17,7 +17,8 @@ import java.time.Instant
 @Entity
 @Table(
     uniqueConstraints = [
-        UniqueConstraint(name = "user_email_unique", columnNames = ["email"])
+        UniqueConstraint(name = "user_email_unique", columnNames = ["email"]),
+        UniqueConstraint(name = "user_username_unique", columnNames = ["username"])
     ]
 )
 class RklUser(
@@ -25,14 +26,20 @@ class RklUser(
     @GeneratedValue(strategy = GenerationType.SEQUENCE)
     val id: Long? = null,
 
-    @Column(nullable = false)
-    var email: String,
+    @Column
+    var email: String? = null,
 
     @Enumerated(EnumType.STRING)
     var type: UserType,
 
     @Column
     var driverName: String? = null,
+
+    @Column
+    var username: String? = null,
+
+    @Column
+    var passwordHash: String? = null,
 
     @Column(columnDefinition = "TEXT")
     var signature: String? = null,

@@ -10,6 +10,7 @@ import com.rkl.backend.mapper.user.UserMapper
 import com.rkl.backend.repository.OtpremnicaRepository
 import com.rkl.backend.repository.PrevoznicaRepository
 import com.rkl.backend.searchfilter.dto.UserFilter
+import com.rkl.backend.service.AuthService
 import com.rkl.backend.validation.user.UserValidator
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
@@ -27,6 +28,7 @@ class UserServiceImpl(
     private val measurementService: com.rkl.backend.service.MeasurementService,
     private val otpremnicaRepository: OtpremnicaRepository,
     private val prevoznicaRepository: PrevoznicaRepository,
+    private val authService: AuthService,
 ) : UserService {
 
     val log: Logger = LoggerFactory.getLogger(this.javaClass)
@@ -48,6 +50,9 @@ class UserServiceImpl(
         }
 
         val newUser = userMapper.mapToEntity(createUserRequestDTO)
+        if (!createUserRequestDTO.password.isNullOrBlank()) {
+            newUser.passwordHash = authService.hashPassword(createUserRequestDTO.password)
+        }
         val created = userDao.create(newUser)
         if (!created.driverName.isNullOrBlank()) {
             measurementService.relinkDriverMeasurements(created.id!!, null, created.driverName)
@@ -72,6 +77,10 @@ class UserServiceImpl(
             updateUserRequestDTO.email?.run { it.email = this }
             updateUserRequestDTO.type?.run { it.type = this }
             updateUserRequestDTO.driverName?.run { it.driverName = this }
+            updateUserRequestDTO.username?.run { it.username = this }
+            if (!updateUserRequestDTO.password.isNullOrBlank()) {
+                it.passwordHash = authService.hashPassword(updateUserRequestDTO.password)
+            }
         }
 
         val updated = userDao.update(userDB)

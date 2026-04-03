@@ -64,7 +64,7 @@ class OtpremnicaService(
             tara = request.tara,
             neto = request.neto,
             vozacUser = vozacUser,
-            vozacIme = vozacUser.driverName ?: vozacUser.email,
+            vozacIme = vozacUser.driverName ?: vozacUser.email ?: vozacUser.username ?: "",
             potpisVozaca = vozacUser.signature,
             potpisIzdavaoca = DEFAULT_IZDAVALAC_SIGNATURE,
             status = OtpremnicaStatus.KREIRANA,

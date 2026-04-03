@@ -1,0 +1,39 @@
+databaseChangeLog:
+
+  - changeSet:
+      id: 002-add-username-to-rkl-user
+      author: rkl
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - columnExists:
+                tableName: rkl_user
+                columnName: username
+      changes:
+        - addColumn:
+            tableName: rkl_user
+            columns:
+              - column:
+                  name: username
+                  type: varchar(255)
+              - column:
+                  name: password_hash
+                  type: varchar(255)
+        - addUniqueConstraint:
+            tableName: rkl_user
+            columnNames: username
+            constraintName: user_username_unique
+
+  - changeSet:
+      id: 002-make-email-nullable
+      author: rkl
+      preConditions:
+        - onFail: MARK_RAN
+        - columnExists:
+            tableName: rkl_user
+            columnName: email
+      changes:
+        - dropNotNullConstraint:
+            tableName: rkl_user
+            columnName: email
+            columnDataType: varchar(255)

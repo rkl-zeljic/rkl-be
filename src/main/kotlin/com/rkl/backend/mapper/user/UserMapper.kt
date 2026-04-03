@@ -14,6 +14,7 @@ class UserMapper {
                 email = email,
                 type = type,
                 driverName = driverName,
+                username = username,
                 signature = signature,
                 createdAt = createdAt
             )
@@ -24,7 +25,8 @@ class UserMapper {
         return RklUser(
             email = user.email,
             type = user.type,
-            driverName = user.driverName
+            driverName = user.driverName,
+            username = user.username,
         )
     }
 }

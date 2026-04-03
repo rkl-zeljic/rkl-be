@@ -37,11 +37,12 @@ class UserDaoImpl(
 
     override fun findByName(name: String): RklUser {
         return userRepository.findByEmail(name)
-            ?: throw NotExistsException(ENTITY_DOES_NOT_EXIST_ERROR, "User with email[$name] doesn't exist!")
+            ?: userRepository.findByUsername(name)
+            ?: throw NotExistsException(ENTITY_DOES_NOT_EXIST_ERROR, "User with identifier[$name] doesn't exist!")
     }
 
     override fun create(rklUser: RklUser): RklUser {
-        assertDoesNotExistByEmail(rklUser.email)
+        rklUser.email?.let { assertDoesNotExistByEmail(it) }
 
         return userRepository.save(rklUser)
     }

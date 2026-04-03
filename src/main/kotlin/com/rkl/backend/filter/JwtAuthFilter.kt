@@ -1,7 +1,9 @@
 package com.rkl.backend.filter
 
+import com.nimbusds.jose.JWSAlgorithm
 import com.nimbusds.jose.JWSVerifier
 import com.nimbusds.jose.crypto.ECDSAVerifier
+import com.nimbusds.jose.crypto.MACVerifier
 import com.nimbusds.jose.jwk.ECKey
 import com.nimbusds.jose.jwk.JWKSet
 import com.nimbusds.jwt.SignedJWT
@@ -41,6 +43,10 @@ class JwtAuthFilter(
     private val httpClient = HttpClient.newHttpClient()
     private val cachedVerifier = AtomicReference<JWSVerifier?>(null)
     private val cachedKeyJson = AtomicReference<String?>(null)
+
+    private val hmacVerifier: JWSVerifier by lazy {
+        MACVerifier(securityConfig.jwtSecret.toByteArray().copyOf(32))
+    }
 
     private val configuredVerifier: JWSVerifier? by lazy {
         try {
@@ -157,6 +163,87 @@ class JwtAuthFilter(
         return newVerifier?.let { signedJWT.verify(it) } ?: false
     }
 
+    private fun isInternalToken(signedJWT: SignedJWT): Boolean {
+        return signedJWT.header.algorithm == JWSAlgorithm.HS256
+    }
+
+    private fun handleInternalToken(signedJWT: SignedJWT, response: ServletResponse): Boolean {
+        if (!signedJWT.verify(hmacVerifier)) {
+            throw RuntimeException("Invalid JWT signature")
+        }
+
+        val claims = signedJWT.jwtClaimsSet
+
+        if (claims.issuer != securityConfig.internalIssuer) {
+            throw RuntimeException("Invalid issuer")
+        }
+
+        if (claims.expirationTime?.before(Date()) == true) {
+            throw RuntimeException("Token expired")
+        }
+
+        val identifier = claims.getClaim("identifier") as? String
+            ?: claims.getClaim("email") as? String
+            ?: throw RuntimeException("Identifier claim not found")
+
+        val userResponseDTO = try {
+            userService.getCurrentUser(identifier)
+        } catch (e: Exception) {
+            val httpResponse = response as HttpServletResponse
+            httpResponse.status = HttpServletResponse.SC_FORBIDDEN
+            httpResponse.contentType = "application/json"
+            httpResponse.characterEncoding = "UTF-8"
+            httpResponse.writer.apply {
+                write("""{"message": "User not registered. Contact an admin."}""")
+                flush()
+            }
+            return false
+        }
+
+        val authorities = listOf(SimpleGrantedAuthority("ROLE_${userResponseDTO.type}"))
+        SecurityContextHolder.getContext().authentication =
+            UsernamePasswordAuthenticationToken(identifier, null, authorities)
+        return true
+    }
+
+    private fun handleSupabaseToken(signedJWT: SignedJWT, response: ServletResponse): Boolean {
+        if (!verifyToken(signedJWT)) {
+            throw RuntimeException("Invalid JWT signature")
+        }
+
+        val claims = signedJWT.jwtClaimsSet
+
+        if (claims.issuer != securityConfig.expectedIssuer) {
+            throw RuntimeException("Invalid issuer")
+        }
+
+        if (claims.expirationTime?.before(Date()) == true) {
+            throw RuntimeException("Token expired")
+        }
+
+        val email = claims.getClaim("email") as? String
+            ?: throw RuntimeException("Email claim not found")
+
+        val isAdmin = securityConfig.admins.contains(email)
+        if (!isAdmin) {
+            val httpResponse = response as HttpServletResponse
+            httpResponse.status = HttpServletResponse.SC_FORBIDDEN
+            httpResponse.contentType = "application/json"
+            httpResponse.characterEncoding = "UTF-8"
+            httpResponse.writer.apply {
+                write("""{"message": "Google login is only available for admins."}""")
+                flush()
+            }
+            return false
+        }
+        val userResponseDTO = userService.getCurrentUserOrCreateIfNotExist(email, true)
+
+        val authorities = listOf(SimpleGrantedAuthority("ROLE_${userResponseDTO.type}"))
+        SecurityContextHolder.getContext().authentication =
+            UsernamePasswordAuthenticationToken(email, null, authorities)
+        return true
+    }
+
     override fun doFilter(request: ServletRequest, response: ServletResponse, chain: FilterChain) {
         val authHeader = (request as HttpServletRequest).getHeader("Authorization")
 
@@ -166,46 +253,13 @@ class JwtAuthFilter(
             try {
                 val signedJWT = SignedJWT.parse(token)
 
-                if (!verifyToken(signedJWT)) {
-                    throw RuntimeException("Invalid JWT signature")
-                }
-
-                val claims = signedJWT.jwtClaimsSet
-
-                if (claims.issuer != securityConfig.expectedIssuer) {
-                    throw RuntimeException("Invalid issuer")
-                }
-
-                if (claims.expirationTime?.before(Date()) == true) {
-                    throw RuntimeException("Token expired")
-                }
-
-                val email = claims.getClaim("email") as? String
-                    ?: throw RuntimeException("Email claim not found")
-
-                val isAdmin = securityConfig.admins.contains(email)
-                val userResponseDTO = if (isAdmin) {
-                    userService.getCurrentUserOrCreateIfNotExist(email, true)
+                val success = if (isInternalToken(signedJWT)) {
+                    handleInternalToken(signedJWT, response)
                 } else {
-                    try {
-                        userService.getCurrentUser(email)
-                    } catch (e: Exception) {
-                        val httpResponse = response as HttpServletResponse
-                        httpResponse.status = HttpServletResponse.SC_FORBIDDEN
-                        httpResponse.contentType = "application/json"
-                        httpResponse.characterEncoding = "UTF-8"
-                        httpResponse.writer.apply {
-                            write("""{"message": "User not registered. Contact an admin."}""")
-                            flush()
-                        }
-                        return
-                    }
+                    handleSupabaseToken(signedJWT, response)
                 }
 
-                val authorities = listOf(SimpleGrantedAuthority("ROLE_${userResponseDTO.type}"))
-
-                SecurityContextHolder.getContext().authentication =
-                    UsernamePasswordAuthenticationToken(email, null, authorities)
+                if (!success) return
 
             } catch (e: Exception) {
                 val httpResponse = response as HttpServletResponse

@@ -1,0 +1,737 @@
+databaseChangeLog:
+
+  # ── RklUser (uses SEQUENCE strategy) ──────────────────────────────────
+  - changeSet:
+      id: 001-create-rkl-user-seq
+      author: rkl
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - sequenceExists:
+                sequenceName: rkl_user_seq
+      changes:
+        - createSequence:
+            sequenceName: rkl_user_seq
+            startValue: 1
+            incrementBy: 50
+
+  - changeSet:
+      id: 001-create-rkl-user
+      author: rkl
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - tableExists:
+                tableName: rkl_user
+      changes:
+        - createTable:
+            tableName: rkl_user
+            columns:
+              - column:
+                  name: id
+                  type: bigint
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: email
+                  type: varchar(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: type
+                  type: varchar(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: driver_name
+                  type: varchar(255)
+              - column:
+                  name: signature
+                  type: text
+              - column:
+                  name: created_at
+                  type: timestamp with time zone
+                  constraints:
+                    nullable: false
+        - addUniqueConstraint:
+            tableName: rkl_user
+            columnNames: email
+            constraintName: user_email_unique
+
+  # ── ImportedFile ──────────────────────────────────────────────────────
+  - changeSet:
+      id: 001-create-imported-files
+      author: rkl
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - tableExists:
+                tableName: imported_files
+      changes:
+        - createTable:
+            tableName: imported_files
+            columns:
+              - column:
+                  name: id
+                  type: bigint
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: original_filename
+                  type: varchar(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: blob_name
+                  type: varchar(255)
+                  constraints:
+                    nullable: false
+                    unique: true
+              - column:
+                  name: file_size
+                  type: bigint
+              - column:
+                  name: content_type
+                  type: varchar(255)
+              - column:
+                  name: uploaded_by
+                  type: varchar(255)
+              - column:
+                  name: record_count
+                  type: int
+              - column:
+                  name: created_at
+                  type: timestamp
+
+  # ── Merenje ───────────────────────────────────────────────────────────
+  - changeSet:
+      id: 001-create-merenja
+      author: rkl
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - tableExists:
+                tableName: merenja
+      changes:
+        - createTable:
+            tableName: merenja
+            columns:
+              - column:
+                  name: id
+                  type: bigint
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: imported_file_id
+                  type: bigint
+              - column:
+                  name: datum_izvestaja
+                  type: date
+              - column:
+                  name: merni_list_br
+                  type: int
+                  constraints:
+                    nullable: false
+              - column:
+                  name: posiljalac
+                  type: varchar(255)
+              - column:
+                  name: porucilac
+                  type: varchar(255)
+              - column:
+                  name: primalac
+                  type: varchar(255)
+              - column:
+                  name: roba
+                  type: varchar(255)
+              - column:
+                  name: bruto
+                  type: double
+              - column:
+                  name: tara
+                  type: double
+              - column:
+                  name: neto
+                  type: double
+              - column:
+                  name: prevoznik
+                  type: varchar(255)
+              - column:
+                  name: registracija
+                  type: varchar(255)
+              - column:
+                  name: vozac
+                  type: varchar(255)
+              - column:
+                  name: vozac_user_id
+                  type: bigint
+              - column:
+                  name: mesto
+                  type: varchar(255)
+              - column:
+                  name: potpis
+                  type: varchar(255)
+              - column:
+                  name: created_at
+                  type: timestamp
+              - column:
+                  name: updated_at
+                  type: timestamp
+        - addUniqueConstraint:
+            tableName: merenja
+            columnNames: datum_izvestaja, merni_list_br
+            constraintName: ux_merenja_datum_merni
+        - addForeignKeyConstraint:
+            baseTableName: merenja
+            baseColumnNames: imported_file_id
+            referencedTableName: imported_files
+            referencedColumnNames: id
+            constraintName: fk_merenja_imported_file
+        - addForeignKeyConstraint:
+            baseTableName: merenja
+            baseColumnNames: vozac_user_id
+            referencedTableName: rkl_user
+            referencedColumnNames: id
+            constraintName: fk_merenja_vozac_user
+        - createIndex:
+            tableName: merenja
+            indexName: ix_merenja_datum
+            columns:
+              - column:
+                  name: datum_izvestaja
+        - createIndex:
+            tableName: merenja
+            indexName: ix_merenja_roba
+            columns:
+              - column:
+                  name: roba
+        - createIndex:
+            tableName: merenja
+            indexName: ix_merenja_registracija
+            columns:
+              - column:
+                  name: registracija
+        - createIndex:
+            tableName: merenja
+            indexName: ix_merenja_vozac_user
+            columns:
+              - column:
+                  name: vozac_user_id
+
+  # ── Faktura ──────────────────────────────────────────────────────────
+  - changeSet:
+      id: 001-create-fakture
+      author: rkl
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - tableExists:
+                tableName: fakture
+      changes:
+        - createTable:
+            tableName: fakture
+            columns:
+              - column:
+                  name: id
+                  type: bigint
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: broj_fakture
+                  type: varchar(255)
+                  constraints:
+                    nullable: false
+                    unique: true
+              - column:
+                  name: porucilac
+                  type: varchar(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: datum_od
+                  type: date
+                  constraints:
+                    nullable: false
+              - column:
+                  name: datum_do
+                  type: date
+                  constraints:
+                    nullable: false
+              - column:
+                  name: status
+                  type: varchar(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: datum_slanja
+                  type: date
+              - column:
+                  name: napomena
+                  type: varchar(255)
+              - column:
+                  name: created_by
+                  type: varchar(255)
+              - column:
+                  name: measurement_count
+                  type: int
+              - column:
+                  name: created_at
+                  type: timestamp
+              - column:
+                  name: updated_at
+                  type: timestamp
+        - addUniqueConstraint:
+            tableName: fakture
+            columnNames: broj_fakture
+            constraintName: ux_fakture_broj
+        - createIndex:
+            tableName: fakture
+            indexName: ix_fakture_porucilac
+            columns:
+              - column:
+                  name: porucilac
+        - createIndex:
+            tableName: fakture
+            indexName: ix_fakture_status
+            columns:
+              - column:
+                  name: status
+
+  # ── Label ─────────────────────────────────────────────────────────────
+  - changeSet:
+      id: 001-create-labels
+      author: rkl
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - tableExists:
+                tableName: labels
+      changes:
+        - createTable:
+            tableName: labels
+            columns:
+              - column:
+                  name: id
+                  type: bigint
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: column_name
+                  type: varchar(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: canonical_value
+                  type: varchar(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: timestamp
+              - column:
+                  name: updated_at
+                  type: timestamp
+        - addUniqueConstraint:
+            tableName: labels
+            columnNames: column_name, canonical_value
+            constraintName: ux_labels_column_canonical
+        - createIndex:
+            tableName: labels
+            indexName: ix_labels_column
+            columns:
+              - column:
+                  name: column_name
+
+  - changeSet:
+      id: 001-create-label-variations
+      author: rkl
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - tableExists:
+                tableName: label_variations
+      changes:
+        - createTable:
+            tableName: label_variations
+            columns:
+              - column:
+                  name: label_id
+                  type: bigint
+                  constraints:
+                    nullable: false
+              - column:
+                  name: variation
+                  type: varchar(255)
+                  constraints:
+                    nullable: false
+        - addForeignKeyConstraint:
+            baseTableName: label_variations
+            baseColumnNames: label_id
+            referencedTableName: labels
+            referencedColumnNames: id
+            constraintName: fk_label_variations_label
+        - createIndex:
+            tableName: label_variations
+            indexName: ix_label_variations_value
+            columns:
+              - column:
+                  name: variation
+
+  # ── Primalac ──────────────────────────────────────────────────────────
+  - changeSet:
+      id: 001-create-primaoci
+      author: rkl
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - tableExists:
+                tableName: primaoci
+      changes:
+        - createTable:
+            tableName: primaoci
+            columns:
+              - column:
+                  name: id
+                  type: bigint
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: naziv
+                  type: varchar(255)
+                  constraints:
+                    nullable: false
+                    unique: true
+              - column:
+                  name: email
+                  type: varchar(255)
+              - column:
+                  name: telefon
+                  type: varchar(255)
+              - column:
+                  name: adresa
+                  type: varchar(255)
+              - column:
+                  name: napomena
+                  type: text
+              - column:
+                  name: created_at
+                  type: timestamp
+              - column:
+                  name: updated_at
+                  type: timestamp
+        - addUniqueConstraint:
+            tableName: primaoci
+            columnNames: naziv
+            constraintName: ux_primaoci_naziv
+        - createIndex:
+            tableName: primaoci
+            indexName: ix_primaoci_naziv
+            columns:
+              - column:
+                  name: naziv
+
+  # ── Otpremnica ────────────────────────────────────────────────────────
+  - changeSet:
+      id: 001-create-otpremnice
+      author: rkl
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - tableExists:
+                tableName: otpremnice
+      changes:
+        - createTable:
+            tableName: otpremnice
+            columns:
+              - column:
+                  name: id
+                  type: bigint
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: broj_otpremnice
+                  type: varchar(255)
+                  constraints:
+                    nullable: false
+                    unique: true
+              - column:
+                  name: datum
+                  type: date
+                  constraints:
+                    nullable: false
+              - column:
+                  name: porucilac
+                  type: varchar(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: prevoznik
+                  type: varchar(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: registracija
+                  type: varchar(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: naziv_robe
+                  type: varchar(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: jedinica_mere
+                  type: varchar(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: bruto
+                  type: double
+                  constraints:
+                    nullable: false
+              - column:
+                  name: tara
+                  type: double
+                  constraints:
+                    nullable: false
+              - column:
+                  name: neto
+                  type: double
+                  constraints:
+                    nullable: false
+              - column:
+                  name: vozac_user_id
+                  type: bigint
+              - column:
+                  name: vozac_ime
+                  type: varchar(255)
+              - column:
+                  name: potpis_vozaca
+                  type: text
+              - column:
+                  name: potpis_izdavaoca
+                  type: text
+              - column:
+                  name: potpis_primaoca
+                  type: text
+              - column:
+                  name: status
+                  type: varchar(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_by
+                  type: varchar(255)
+              - column:
+                  name: created_at
+                  type: timestamp
+              - column:
+                  name: updated_at
+                  type: timestamp
+        - addUniqueConstraint:
+            tableName: otpremnice
+            columnNames: broj_otpremnice
+            constraintName: ux_otpremnice_broj
+        - addForeignKeyConstraint:
+            baseTableName: otpremnice
+            baseColumnNames: vozac_user_id
+            referencedTableName: rkl_user
+            referencedColumnNames: id
+            constraintName: fk_otpremnice_vozac_user
+        - createIndex:
+            tableName: otpremnice
+            indexName: ix_otpremnice_vozac_user
+            columns:
+              - column:
+                  name: vozac_user_id
+        - createIndex:
+            tableName: otpremnice
+            indexName: ix_otpremnice_datum
+            columns:
+              - column:
+                  name: datum
+
+  # ── Prevoznica ────────────────────────────────────────────────────────
+  - changeSet:
+      id: 001-create-prevoznice
+      author: rkl
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - tableExists:
+                tableName: prevoznice
+      changes:
+        - createTable:
+            tableName: prevoznice
+            columns:
+              - column:
+                  name: id
+                  type: bigint
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: broj_prevoznice
+                  type: varchar(255)
+                  constraints:
+                    nullable: false
+                    unique: true
+              - column:
+                  name: datum
+                  type: date
+                  constraints:
+                    nullable: false
+              - column:
+                  name: posiljalac
+                  type: varchar(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: platilac_prevoza
+                  type: varchar(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: primalac
+                  type: varchar(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: prevozilac
+                  type: varchar(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: prateca_dokumenta
+                  type: varchar(255)
+              - column:
+                  name: mesto_utovara
+                  type: varchar(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: mesto_istovara
+                  type: varchar(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: registracija
+                  type: varchar(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: datum_utovara
+                  type: date
+                  constraints:
+                    nullable: false
+              - column:
+                  name: datum_istovara
+                  type: date
+                  constraints:
+                    nullable: false
+              - column:
+                  name: vrsta_robe
+                  type: varchar(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: km
+                  type: double
+              - column:
+                  name: jed_mere
+                  type: varchar(255)
+              - column:
+                  name: stvarna_tezina
+                  type: double
+              - column:
+                  name: vozac_user_id
+                  type: bigint
+              - column:
+                  name: vozac_ime
+                  type: varchar(255)
+              - column:
+                  name: potpis_vozaca
+                  type: text
+              - column:
+                  name: potpis_primaoca
+                  type: text
+              - column:
+                  name: status
+                  type: varchar(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_by
+                  type: varchar(255)
+              - column:
+                  name: created_at
+                  type: timestamp
+              - column:
+                  name: updated_at
+                  type: timestamp
+        - addUniqueConstraint:
+            tableName: prevoznice
+            columnNames: broj_prevoznice
+            constraintName: ux_prevoznice_broj
+        - addForeignKeyConstraint:
+            baseTableName: prevoznice
+            baseColumnNames: vozac_user_id
+            referencedTableName: rkl_user
+            referencedColumnNames: id
+            constraintName: fk_prevoznice_vozac_user
+        - createIndex:
+            tableName: prevoznice
+            indexName: ix_prevoznice_vozac_user
+            columns:
+              - column:
+                  name: vozac_user_id
+        - createIndex:
+            tableName: prevoznice
+            indexName: ix_prevoznice_datum
+            columns:
+              - column:
+                  name: datum
+
+  # ── JwtKeyCache ───────────────────────────────────────────────────────
+  - changeSet:
+      id: 001-create-jwt-key-cache
+      author: rkl
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - tableExists:
+                tableName: jwt_key_cache
+      changes:
+        - createTable:
+            tableName: jwt_key_cache
+            columns:
+              - column:
+                  name: id
+                  type: bigint
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: public_key_json
+                  type: varchar(1000)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: fetched_at
+                  type: timestamp with time zone
+                  constraints:
+                    nullable: false

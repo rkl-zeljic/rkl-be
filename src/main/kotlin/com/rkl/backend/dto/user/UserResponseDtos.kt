@@ -6,9 +6,10 @@ import java.time.Instant
 
 data class UserResponseDTO(
     val id: Long,
-    val email: String,
+    val email: String? = null,
     val type: UserType = UserType.DRIVER,
     val driverName: String? = null,
+    val username: String? = null,
     val signature: String? = null,
     val createdAt: Instant?
 )

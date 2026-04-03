@@ -5,8 +5,10 @@ spring:
     password: ${RKL_DB_PASSWORD:postgres}
   jpa:
     hibernate:
-      ddl-auto: update
+      ddl-auto: validate
     open-in-view: false
+  liquibase:
+    change-log: classpath:db/changelog/db.changelog-master.yaml
   mail:
     host: ${RKL_MAIL_HOST:smtp.gmail.com}
     port: ${RKL_MAIL_PORT:587}
@@ -36,13 +38,16 @@ rkl:
       - "https://rkl-fe.livelysmoke-ef1fb120.westeurope.azurecontainerapps.io"
       - "https://rklzeljic.com"
     expected-issuer: https://kpjwzjiheuxttvmrjlge.supabase.co/auth/v1
+    internal-issuer: rkl-backend
     jwt-public-key: '{"keys":[{"alg":"ES256","crv":"P-256","ext":true,"key_ops":["verify"],"kid":"54ee3e5f-3e62-4bc5-a928-3003977e3555","kty":"EC","use":"sig","x":"wY15ENBVr6P-vCVPg2Q-OsfbJ2CBY5ZclMKfd7xTrN8","y":"b_3vsx3PjzaU-0_VC-NFdVl_GOQy8si4Rl1pk2mAH8o"}]}'
+    jwt-secret: ${RKL_JWT_SECRET:default-dev-secret-change-in-production-min-32-chars!!}
     jwks-url: https://kpjwzjiheuxttvmrjlge.supabase.co/auth/v1/.well-known/jwks.json
     permit-all-endpoints:
       - "/actuator/**"
       - "/swagger-ui.html"
       - "/swagger-ui/**"
       - "/v3/api-docs/**"
+      - "/api/v1/auth/**"
     admins:
       - "uros.simeunovic.2002@gmail.com"
       - "zeljicvidoje@gmail.com"
