@@ -98,6 +98,25 @@ class FakturaExcelService(
             setTextCell(dataRow, 12, m.mesto ?: "", textStyle)
         }
 
+        // Sum row
+        val boldStyle = createCellStyle(workbook).apply {
+            val font = workbook.createFont()
+            font.bold = true
+            font.fontHeightInPoints = 9
+            setFont(font)
+            alignment = HorizontalAlignment.RIGHT
+        }
+        val sumRow = sheet.createRow(rowIdx++)
+        setTextCell(sumRow, 0, "UKUPNO:", boldStyle)
+        for (i in 1..7) {
+            sumRow.createCell(i).setCellStyle(boldStyle)
+        }
+        val netoSum = measurements.sumOf { it.neto ?: 0.0 }
+        setNumericCell(sumRow, 8, netoSum, boldStyle)
+        for (i in 9 until COLUMNS.size) {
+            sumRow.createCell(i).setCellStyle(boldStyle)
+        }
+
         // Auto-size columns
         for (i in COLUMNS.indices) {
             sheet.autoSizeColumn(i)

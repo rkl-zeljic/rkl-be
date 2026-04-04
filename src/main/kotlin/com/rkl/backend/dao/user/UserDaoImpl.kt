@@ -42,7 +42,7 @@ class UserDaoImpl(
     }
 
     override fun create(rklUser: RklUser): RklUser {
-        rklUser.email?.let { assertDoesNotExistByEmail(it) }
+        rklUser.email?.takeIf { it.isNotBlank() }?.let { assertDoesNotExistByEmail(it) }
 
         return userRepository.save(rklUser)
     }

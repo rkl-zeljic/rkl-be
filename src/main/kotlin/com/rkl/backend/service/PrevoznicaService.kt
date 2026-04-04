@@ -4,7 +4,9 @@ import com.rkl.backend.dto.prevoznica.*
 import com.rkl.backend.entity.Prevoznica
 import com.rkl.backend.entity.PrevoznicaStatus
 import com.rkl.backend.repository.PrevoznicaRepository
+import com.rkl.backend.repository.PrimalacRepository
 import com.rkl.backend.repository.UserRepository
+import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.time.LocalDate
@@ -13,8 +15,13 @@ import java.time.format.DateTimeFormatter
 @Service
 class PrevoznicaService(
     private val prevoznicaRepository: PrevoznicaRepository,
-    private val userRepository: UserRepository
+    private val userRepository: UserRepository,
+    private val primalacRepository: PrimalacRepository,
+    private val prevoznicaPdfService: PrevoznicaPdfService,
+    private val emailService: EmailService
 ) {
+
+    private val log = LoggerFactory.getLogger(PrevoznicaService::class.java)
 
     companion object {
         private val NUMBER_DATE_FORMAT = DateTimeFormatter.ofPattern("yyyyMMdd")
@@ -37,6 +44,7 @@ class PrevoznicaService(
     @Transactional(readOnly = true)
     fun getMyPrevoznice(email: String): PrevozniceResponse {
         val user = userRepository.findByEmail(email)
+            ?: userRepository.findByUsername(email)
             ?: throw NoSuchElementException("Korisnik nije pronađen")
         val prevoznice = prevoznicaRepository.findByVozacUserOrderByCreatedAtDesc(user)
         return PrevozniceResponse(data = prevoznice.map { it.toDto() })
@@ -75,6 +83,24 @@ class PrevoznicaService(
         )
 
         val saved = prevoznicaRepository.save(prevoznica)
+
+        // Send PDF to buyer if email is available
+        try {
+            val primalacEntity = primalacRepository.findByNaziv(request.primalac)
+            if (primalacEntity?.email != null) {
+                val pdfBytes = prevoznicaPdfService.generatePdf(saved.id!!)
+                emailService.sendDocumentWithAttachment(
+                    toEmail = primalacEntity.email!!,
+                    documentType = "Prevoznica",
+                    documentNumber = brojPrevoznice,
+                    porucilac = request.primalac,
+                    pdfBytes = pdfBytes
+                )
+            }
+        } catch (e: Exception) {
+            log.error("Failed to send prevoznica email: {}", e.message)
+        }
+
         return PrevoznicaDetailResponse(data = saved.toDto())
     }
 
@@ -102,6 +128,15 @@ class PrevoznicaService(
         }
         prevoznicaRepository.delete(prevoznica)
         return PrevoznicaDeleteResponse(id = id)
+    }
+
+    @Transactional(readOnly = true)
+    fun getDistinctMestaIstovara(search: String?): List<String> {
+        return if (search.isNullOrBlank()) {
+            prevoznicaRepository.findDistinctMestoIstovara()
+        } else {
+            prevoznicaRepository.findDistinctMestoIstovara(search)
+        }
     }
 
     private fun generateBrojPrevoznice(datum: LocalDate): String {

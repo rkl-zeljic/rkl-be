@@ -18,6 +18,12 @@ interface PrevoznicaRepository : JpaRepository<Prevoznica, Long> {
     @Query("SELECT COALESCE(MAX(p.id), 0) FROM Prevoznica p")
     fun findMaxId(): Long
 
+    @Query("SELECT DISTINCT p.mestoIstovara FROM Prevoznica p WHERE p.mestoIstovara IS NOT NULL AND p.mestoIstovara <> '' ORDER BY p.mestoIstovara")
+    fun findDistinctMestoIstovara(): List<String>
+
+    @Query("SELECT DISTINCT p.mestoIstovara FROM Prevoznica p WHERE p.mestoIstovara IS NOT NULL AND p.mestoIstovara <> '' AND LOWER(p.mestoIstovara) LIKE LOWER(CONCAT('%', :search, '%')) ORDER BY p.mestoIstovara")
+    fun findDistinctMestoIstovara(@Param("search") search: String): List<String>
+
     @Modifying
     @Query("UPDATE Prevoznica p SET p.vozacUser = NULL WHERE p.vozacUser.id = :userId")
     fun unlinkFromUser(@Param("userId") userId: Long): Int
@@ -25,4 +31,12 @@ interface PrevoznicaRepository : JpaRepository<Prevoznica, Long> {
     @Modifying
     @Query("UPDATE Prevoznica p SET p.potpisVozaca = :signature WHERE p.vozacUser.id = :userId AND (p.potpisVozaca IS NULL OR p.potpisVozaca = '')")
     fun backfillDriverSignature(@Param("userId") userId: Long, @Param("signature") signature: String): Int
+
+    @Modifying
+    @Query("UPDATE prevoznice SET vozac_user_id = :userId WHERE LOWER(vozac_ime) = LOWER(:driverName) AND (vozac_user_id IS NULL OR vozac_user_id <> :userId)", nativeQuery = true)
+    fun linkToDriver(@Param("userId") userId: Long, @Param("driverName") driverName: String): Int
+
+    @Modifying
+    @Query("UPDATE prevoznice SET vozac_user_id = NULL WHERE vozac_user_id = :userId", nativeQuery = true)
+    fun unlinkFromDriver(@Param("userId") userId: Long): Int
 }

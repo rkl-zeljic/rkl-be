@@ -1,5 +1,6 @@
 package com.rkl.backend.controller
 
+import com.rkl.backend.dto.measurement.DistinctValuesResponse
 import com.rkl.backend.dto.prevoznica.*
 import com.rkl.backend.service.PrevoznicaPdfService
 import com.rkl.backend.service.PrevoznicaService
@@ -22,6 +23,13 @@ class PrevoznicaController(
     @PreAuthorize("hasRole('ADMIN')")
     fun listPrevoznice(): PrevozniceResponse {
         return prevoznicaService.listPrevoznice()
+    }
+
+    @GetMapping("/mesta-istovara")
+    @PreAuthorize("hasRole('ADMIN')")
+    fun getDistinctMestaIstovara(@RequestParam(required = false) search: String?): DistinctValuesResponse {
+        val values = prevoznicaService.getDistinctMestaIstovara(search)
+        return DistinctValuesResponse(field = "mestoIstovara", data = values, totalCount = values.size)
     }
 
     @GetMapping("/{id}")

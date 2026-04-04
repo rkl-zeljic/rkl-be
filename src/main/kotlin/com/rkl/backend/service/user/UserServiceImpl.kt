@@ -43,6 +43,7 @@ class UserServiceImpl(
         return userDao.findById(id).let(userMapper::mapToDTO)
     }
 
+    @Transactional
     @PreAuthorize("hasAnyRole('ADMIN')")
     override fun create(createUserRequestDTO: CreateUserRequestDTO): UserResponseDTO {
         if (createUserRequestDTO.type == UserType.ADMIN) {
@@ -56,6 +57,7 @@ class UserServiceImpl(
         val created = userDao.create(newUser)
         if (!created.driverName.isNullOrBlank()) {
             measurementService.relinkDriverMeasurements(created.id!!, null, created.driverName)
+            relinkDocumentsToDriver(created.id!!, null, created.driverName)
         }
         return created
             .let(userMapper::mapToDTO)
@@ -64,6 +66,7 @@ class UserServiceImpl(
             }
     }
 
+    @Transactional
     @PreAuthorize("hasAnyRole('ADMIN')")
     override fun update(updateUserRequestDTO: UpdateUserRequestDTO): UserResponseDTO {
         val userDB = userDao.findById(updateUserRequestDTO.id!!)
@@ -86,6 +89,7 @@ class UserServiceImpl(
         val updated = userDao.update(userDB)
         if (updateUserRequestDTO.driverName != null && oldDriverName != updated.driverName) {
             measurementService.relinkDriverMeasurements(updated.id!!, oldDriverName, updated.driverName)
+            relinkDocumentsToDriver(updated.id!!, oldDriverName, updated.driverName)
         }
         return updated
             .let(userMapper::mapToDTO)
@@ -139,6 +143,19 @@ class UserServiceImpl(
             .also {
                 log.info("Signature updated for user with ID ${it.id}")
             }
+    }
+
+    private fun relinkDocumentsToDriver(userId: Long, oldDriverName: String?, newDriverName: String?) {
+        if (!oldDriverName.isNullOrBlank() && oldDriverName != newDriverName) {
+            val unlinkedOtp = otpremnicaRepository.unlinkFromDriver(userId)
+            val unlinkedPrev = prevoznicaRepository.unlinkFromDriver(userId)
+            log.info("Unlinked $unlinkedOtp otpremnice and $unlinkedPrev prevoznice from user $userId (old driverName: $oldDriverName)")
+        }
+        if (!newDriverName.isNullOrBlank()) {
+            val linkedOtp = otpremnicaRepository.linkToDriver(userId, newDriverName)
+            val linkedPrev = prevoznicaRepository.linkToDriver(userId, newDriverName)
+            log.info("Linked $linkedOtp otpremnice and $linkedPrev prevoznice to user $userId (driverName: $newDriverName)")
+        }
     }
 
     override fun getCurrentUserOrCreateIfNotExist(name: String, isAdmin: Boolean): UserResponseDTO {

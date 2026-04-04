@@ -40,7 +40,7 @@ class MeasurementService(
         )
 
         val DISTINCT_FIELD_WHITELIST = setOf(
-            "roba", "registracija", "prevoznik", "primalac", "posiljalac", "porucilac", "vozac"
+            "roba", "registracija", "prevoznik", "primalac", "posiljalac", "porucilac", "vozac", "mesto"
         )
 
         val GROUP_BY_FORMATS = mapOf(
@@ -172,6 +172,7 @@ class MeasurementService(
     @Transactional(readOnly = true)
     fun queryMyMeasurements(filter: MeasurementFilterRequest, email: String): MeasurementsResponse {
         val user = userRepository.findByEmail(email)
+            ?: userRepository.findByUsername(email)
             ?: throw NoSuchElementException("User not found")
 
         if (filter.sortBy !in SORT_WHITELIST) {
@@ -250,6 +251,7 @@ class MeasurementService(
             "posiljalac" -> repository.findDistinctPosiljalac()
             "porucilac" -> repository.findDistinctPorucilac()
             "vozac" -> repository.findDistinctVozac()
+            "mesto" -> repository.findDistinctMesto()
             else -> emptyList()
         }
 

@@ -87,6 +87,9 @@ interface MerenjeRepository : JpaRepository<Merenje, Long>, JpaSpecificationExec
     @Query("SELECT DISTINCT m.vozac FROM Merenje m WHERE m.vozac IS NOT NULL AND m.vozac <> '' ORDER BY m.vozac ASC")
     fun findDistinctVozac(): List<String>
 
+    @Query("SELECT DISTINCT m.mesto FROM Merenje m WHERE m.mesto IS NOT NULL AND m.mesto <> '' ORDER BY m.mesto ASC")
+    fun findDistinctMesto(): List<String>
+
     @Modifying
     @Query("UPDATE Merenje m SET m.potpis = :signature WHERE m.id = :id")
     fun updateSignature(@Param("id") id: Long, @Param("signature") signature: String?)

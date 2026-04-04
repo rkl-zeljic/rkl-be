@@ -75,4 +75,38 @@ class EmailService(
             throw RuntimeException("Greška pri slanju emaila: ${e.message}")
         }
     }
+
+    @Async
+    fun sendDocumentWithAttachment(
+        toEmail: String,
+        documentType: String,
+        documentNumber: String,
+        porucilac: String,
+        pdfBytes: ByteArray
+    ) {
+        try {
+            val mimeMessage: MimeMessage = mailSender.createMimeMessage()
+            val helper = MimeMessageHelper(mimeMessage, true, "UTF-8")
+
+            helper.setFrom(fromEmail)
+            helper.setTo(toEmail)
+            helper.setSubject("$documentType $documentNumber - $porucilac")
+            helper.setText("""
+                Poštovani,
+
+                U prilogu se nalazi $documentType $documentNumber za kupca $porucilac.
+
+                Srdačan pozdrav,
+                Miki RKL
+            """.trimIndent())
+
+            val fileName = "$documentType-$documentNumber.pdf"
+            helper.addAttachment(fileName, ByteArrayResource(pdfBytes), "application/pdf")
+
+            mailSender.send(mimeMessage)
+            log.info("{} {} sent to {}", documentType, documentNumber, toEmail)
+        } catch (e: Exception) {
+            log.error("Failed to send {} {} to {}: {}", documentType, documentNumber, toEmail, e.message)
+        }
+    }
 }

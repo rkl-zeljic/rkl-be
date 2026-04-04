@@ -107,6 +107,18 @@ class FakturaPdfService(
             addTextCell(table, m.mesto ?: "", cellFont, Element.ALIGN_LEFT, bg)
         }
 
+        // Sum row
+        val sumFont = Font(Font.HELVETICA, 7f, Font.BOLD)
+        val sumBg = Color(230, 230, 230)
+        for (i in 0 until 8) {
+            addTextCell(table, if (i == 0) "UKUPNO:" else "", sumFont, Element.ALIGN_RIGHT, sumBg)
+        }
+        val netoSum = measurements.sumOf { it.neto ?: 0.0 }
+        addNumericCell(table, netoSum, sumFont, sumBg)
+        for (i in 9 until COLUMNS.size) {
+            addTextCell(table, "", sumFont, Element.ALIGN_LEFT, sumBg)
+        }
+
         document.add(table)
         document.close()
         return outputStream.toByteArray()

@@ -4,6 +4,8 @@ import org.springframework.format.annotation.DateTimeFormat
 import java.time.LocalDate
 
 data class CreateOtpremnicaRequest(
+    val brojOtpremnice: String,
+
     @field:DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
     val datum: LocalDate,
 
