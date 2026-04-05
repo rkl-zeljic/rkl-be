@@ -11,6 +11,8 @@ import org.springframework.stereotype.Repository
 @Repository
 interface PrevoznicaRepository : JpaRepository<Prevoznica, Long> {
 
+    fun findByOtpremnicaId(otpremnicaId: Long): Prevoznica?
+
     fun findAllByOrderByCreatedAtDesc(): List<Prevoznica>
 
     fun findByVozacUserOrderByCreatedAtDesc(vozacUser: RklUser): List<Prevoznica>

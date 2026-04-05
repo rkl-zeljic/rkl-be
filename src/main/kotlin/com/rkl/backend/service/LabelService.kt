@@ -132,6 +132,39 @@ class LabelService(
         repository.deleteById(id)
     }
 
+    fun getUnassignedValues(columnName: String): UnassignedValuesResponse {
+        validateColumn(columnName)
+
+        val labels = repository.findByColumnName(columnName)
+        val assignedValues = mutableSetOf<String>()
+        for (label in labels) {
+            assignedValues.add(label.canonicalValue.lowercase())
+            for (v in label.variations) {
+                assignedValues.add(v.lowercase())
+            }
+        }
+
+        @Suppress("SqlResolve")
+        val results = entityManager.createNativeQuery(
+            "SELECT $columnName AS val, COUNT(*) AS cnt FROM merenja WHERE $columnName IS NOT NULL AND $columnName <> '' GROUP BY $columnName ORDER BY cnt DESC, val ASC"
+        ).resultList
+
+        val unassigned = results
+            .map { row ->
+                val arr = row as Array<*>
+                val value = arr[0] as String
+                val count = (arr[1] as Number).toLong()
+                value to count
+            }
+            .filter { (value, _) -> value.lowercase() !in assignedValues }
+            .map { (value, count) -> UnassignedValueDTO(value = value, count = count) }
+
+        return UnassignedValuesResponse(
+            data = unassigned,
+            totalCount = unassigned.size
+        )
+    }
+
     /**
      * Resolves a value to its canonical label for a given column.
      * Returns the canonical value if a matching label is found, otherwise the original value.

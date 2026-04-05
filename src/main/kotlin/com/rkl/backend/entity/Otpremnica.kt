@@ -74,6 +74,13 @@ class Otpremnica(
     @Column(name = "potpis_primaoca", columnDefinition = "TEXT")
     var potpisPrimaoca: String? = null,
 
+    @Column(name = "bez_merenja", nullable = false)
+    var bezMerenja: Boolean = false,
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "merenje_generated_file_id")
+    var merenjeGeneratedFile: ImportedFile? = null,
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     var status: OtpremnicaStatus = OtpremnicaStatus.KREIRANA,

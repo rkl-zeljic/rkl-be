@@ -75,6 +75,7 @@ class OtpremnicaService(
             vozacIme = vozacUser.driverName ?: vozacUser.email ?: vozacUser.username ?: "",
             potpisVozaca = vozacUser.signature,
             potpisIzdavaoca = DEFAULT_IZDAVALAC_SIGNATURE,
+            bezMerenja = request.bezMerenja,
             status = OtpremnicaStatus.KREIRANA,
             createdBy = createdBy
         )
@@ -144,6 +145,8 @@ class OtpremnicaService(
         potpisVozaca = !potpisVozaca.isNullOrBlank(),
         potpisIzdavaoca = !potpisIzdavaoca.isNullOrBlank(),
         potpisPrimaoca = !potpisPrimaoca.isNullOrBlank(),
+        bezMerenja = bezMerenja,
+        merenjeGenerated = merenjeGeneratedFile != null,
         status = status.name,
         createdBy = createdBy,
         createdAt = createdAt?.toString(),

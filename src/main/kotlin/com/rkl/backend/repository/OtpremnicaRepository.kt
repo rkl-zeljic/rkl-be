@@ -7,6 +7,7 @@ import org.springframework.data.jpa.repository.Modifying
 import org.springframework.data.jpa.repository.Query
 import org.springframework.data.repository.query.Param
 import org.springframework.stereotype.Repository
+import java.time.LocalDate
 
 @Repository
 interface OtpremnicaRepository : JpaRepository<Otpremnica, Long> {
@@ -19,6 +20,8 @@ interface OtpremnicaRepository : JpaRepository<Otpremnica, Long> {
     fun findMaxId(): Long
 
     fun findByBrojOtpremnice(brojOtpremnice: String): Otpremnica?
+
+    fun findByDatumAndBezMerenjaTrue(datum: LocalDate): List<Otpremnica>
 
     @Modifying
     @Query("UPDATE Otpremnica o SET o.vozacUser = NULL WHERE o.vozacUser.id = :userId")

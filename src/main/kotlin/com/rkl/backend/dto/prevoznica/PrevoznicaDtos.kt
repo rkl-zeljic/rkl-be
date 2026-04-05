@@ -28,7 +28,8 @@ data class CreatePrevoznicaRequest(
     val jedMere: String = "kg",
     val stvarnaTezina: Double? = null,
 
-    val vozacUserId: Long
+    val vozacUserId: Long,
+    val otpremnicaId: Long? = null
 )
 
 data class UpdatePrevoznicaSignatureRequest(
@@ -55,6 +56,8 @@ data class PrevoznicaDto(
     val stvarnaTezina: Double?,
     val vozacUserId: Long?,
     val vozacIme: String,
+    val otpremnicaId: Long?,
+    val otpremnicaBroj: String?,
     val potpisVozaca: Boolean,
     val potpisPrimaoca: Boolean,
     val status: String,

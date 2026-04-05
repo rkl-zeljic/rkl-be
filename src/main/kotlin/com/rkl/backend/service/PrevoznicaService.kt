@@ -3,6 +3,7 @@ package com.rkl.backend.service
 import com.rkl.backend.dto.prevoznica.*
 import com.rkl.backend.entity.Prevoznica
 import com.rkl.backend.entity.PrevoznicaStatus
+import com.rkl.backend.repository.OtpremnicaRepository
 import com.rkl.backend.repository.PrevoznicaRepository
 import com.rkl.backend.repository.PrimalacRepository
 import com.rkl.backend.repository.UserRepository
@@ -15,6 +16,7 @@ import java.time.format.DateTimeFormatter
 @Service
 class PrevoznicaService(
     private val prevoznicaRepository: PrevoznicaRepository,
+    private val otpremnicaRepository: OtpremnicaRepository,
     private val userRepository: UserRepository,
     private val primalacRepository: PrimalacRepository,
     private val prevoznicaPdfService: PrevoznicaPdfService,
@@ -58,6 +60,12 @@ class PrevoznicaService(
 
         val brojPrevoznice = generateBrojPrevoznice(request.datum)
 
+        val otpremnica = request.otpremnicaId?.let {
+            otpremnicaRepository.findById(it).orElseThrow {
+                NoSuchElementException("Otpremnica sa id $it nije pronađena")
+            }
+        }
+
         val prevoznica = Prevoznica(
             brojPrevoznice = brojPrevoznice,
             datum = request.datum,
@@ -75,6 +83,7 @@ class PrevoznicaService(
             km = request.km,
             jedMere = request.jedMere,
             stvarnaTezina = request.stvarnaTezina,
+            otpremnica = otpremnica,
             vozacUser = vozacUser,
             vozacIme = vozacUser.driverName ?: vozacUser.email ?: vozacUser.username ?: "",
             potpisVozaca = vozacUser.signature,
@@ -166,6 +175,8 @@ class PrevoznicaService(
         stvarnaTezina = stvarnaTezina,
         vozacUserId = vozacUser?.id,
         vozacIme = vozacIme,
+        otpremnicaId = otpremnica?.id,
+        otpremnicaBroj = otpremnica?.brojOtpremnice,
         potpisVozaca = !potpisVozaca.isNullOrBlank(),
         potpisPrimaoca = !potpisPrimaoca.isNullOrBlank(),
         status = status.name,

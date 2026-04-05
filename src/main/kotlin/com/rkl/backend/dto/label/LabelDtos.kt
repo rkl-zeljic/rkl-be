@@ -39,3 +39,14 @@ data class LabelColumnsResponse(
     val status: String = "success",
     val data: List<String>
 )
+
+data class UnassignedValueDTO(
+    val value: String,
+    val count: Long
+)
+
+data class UnassignedValuesResponse(
+    val status: String = "success",
+    val data: List<UnassignedValueDTO>,
+    val totalCount: Int
+)

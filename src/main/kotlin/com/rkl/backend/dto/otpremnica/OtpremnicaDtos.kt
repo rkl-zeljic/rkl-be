@@ -19,7 +19,8 @@ data class CreateOtpremnicaRequest(
     val tara: Double,
     val neto: Double,
 
-    val vozacUserId: Long
+    val vozacUserId: Long,
+    val bezMerenja: Boolean = false
 )
 
 data class UpdateOtpremnicaSignatureRequest(
@@ -43,6 +44,8 @@ data class OtpremnicaDto(
     val potpisVozaca: Boolean,
     val potpisIzdavaoca: Boolean,
     val potpisPrimaoca: Boolean,
+    val bezMerenja: Boolean,
+    val merenjeGenerated: Boolean,
     val status: String,
     val createdBy: String?,
     val createdAt: String?,
@@ -62,4 +65,11 @@ data class OtpremnicaDetailResponse(
 data class OtpremnicaDeleteResponse(
     val status: String = "success",
     val id: Long
+)
+
+data class GenerateMerenjaResponse(
+    val status: String = "success",
+    val processedCount: Int,
+    val filename: String,
+    val importedFileId: Long?
 )

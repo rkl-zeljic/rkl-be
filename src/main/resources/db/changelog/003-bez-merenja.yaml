@@ -1,0 +1,72 @@
+databaseChangeLog:
+  - changeSet:
+      id: 003-add-bez-merenja-to-otpremnice
+      author: rkl
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - columnExists:
+                tableName: otpremnice
+                columnName: bez_merenja
+      changes:
+        - addColumn:
+            tableName: otpremnice
+            columns:
+              - column:
+                  name: bez_merenja
+                  type: boolean
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: 003-add-merenje-generated-file-id
+      author: rkl
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - columnExists:
+                tableName: otpremnice
+                columnName: merenje_generated_file_id
+      changes:
+        - addColumn:
+            tableName: otpremnice
+            columns:
+              - column:
+                  name: merenje_generated_file_id
+                  type: bigint
+        - addForeignKeyConstraint:
+            baseTableName: otpremnice
+            baseColumnNames: merenje_generated_file_id
+            referencedTableName: imported_files
+            referencedColumnNames: id
+            constraintName: fk_otpremnice_merenje_generated_file
+
+  - changeSet:
+      id: 003-add-otpremnica-id-to-prevoznice
+      author: rkl
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - columnExists:
+                tableName: prevoznice
+                columnName: otpremnica_id
+      changes:
+        - addColumn:
+            tableName: prevoznice
+            columns:
+              - column:
+                  name: otpremnica_id
+                  type: bigint
+        - addForeignKeyConstraint:
+            baseTableName: prevoznice
+            baseColumnNames: otpremnica_id
+            referencedTableName: otpremnice
+            referencedColumnNames: id
+            constraintName: fk_prevoznice_otpremnica
+        - createIndex:
+            tableName: prevoznice
+            indexName: ix_prevoznice_otpremnica
+            columns:
+              - column:
+                  name: otpremnica_id

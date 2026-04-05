@@ -53,7 +53,6 @@ class MeasurementService(
 
     @Transactional
     fun importExcel(file: MultipartFile, uploadedBy: String? = null): ImportResponse {
-        val startTime = System.currentTimeMillis()
         val filename = file.originalFilename ?: "unknown"
 
         val extension = filename.substringAfterLast(".", "").let { ".$it" }
@@ -65,9 +64,23 @@ class MeasurementService(
             throw IllegalArgumentException("Fajl sa imenom '$filename' je već importovan")
         }
 
+        val bytes = file.bytes
+        return importExcelFromBytes(bytes, filename, file.contentType, uploadedBy)
+    }
+
+    @Transactional
+    fun importExcelFromBytes(
+        bytes: ByteArray,
+        filename: String,
+        contentType: String? = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        uploadedBy: String? = null
+    ): ImportResponse {
+        val startTime = System.currentTimeMillis()
+        val extension = filename.substringAfterLast(".", "").let { ".$it" }
+
         val tempFile = File.createTempFile("upload_", extension, File(appProperties.tempDir))
         try {
-            file.transferTo(tempFile)
+            tempFile.writeBytes(bytes)
             val parsedRows = excelParsingService.parseExcel(tempFile)
             val reportDate = DateUtils.extractReportDateFromFilename(filename)
 
@@ -82,8 +95,8 @@ class MeasurementService(
             val importedFile = importedFileRepository.save(ImportedFile(
                 originalFilename = filename,
                 blobName = blobName,
-                fileSize = file.size,
-                contentType = file.contentType,
+                fileSize = bytes.size.toLong(),
+                contentType = contentType,
                 uploadedBy = uploadedBy,
                 recordCount = parsedRows.size
             ))

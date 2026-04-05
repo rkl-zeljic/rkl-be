@@ -77,6 +77,11 @@ class Prevoznica(
     @Column(name = "stvarna_tezina")
     var stvarnaTezina: Double? = null,
 
+    // Otpremnica link
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "otpremnica_id")
+    var otpremnica: Otpremnica? = null,
+
     // Driver link
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "vozac_user_id")

@@ -1,6 +1,7 @@
 package com.rkl.backend.controller
 
 import com.rkl.backend.dto.otpremnica.*
+import com.rkl.backend.service.BezMerenjaService
 import com.rkl.backend.service.OtpremnicaPdfService
 import com.rkl.backend.service.OtpremnicaService
 import jakarta.validation.Valid
@@ -9,13 +10,16 @@ import org.springframework.http.MediaType
 import org.springframework.http.ResponseEntity
 import org.springframework.security.access.prepost.PreAuthorize
 import org.springframework.security.core.Authentication
+import org.springframework.format.annotation.DateTimeFormat
 import org.springframework.web.bind.annotation.*
+import java.time.LocalDate
 
 @RestController
 @RequestMapping("/api/v1/otpremnice")
 class OtpremnicaController(
     private val otpremnicaService: OtpremnicaService,
-    private val otpremnicaPdfService: OtpremnicaPdfService
+    private val otpremnicaPdfService: OtpremnicaPdfService,
+    private val bezMerenjaService: BezMerenjaService
 ) {
 
     @GetMapping
@@ -55,6 +59,15 @@ class OtpremnicaController(
     @PreAuthorize("hasRole('ADMIN')")
     fun deleteOtpremnica(@PathVariable id: Long): OtpremnicaDeleteResponse {
         return otpremnicaService.deleteOtpremnica(id)
+    }
+
+    @PostMapping("/generate-merenja")
+    @PreAuthorize("hasRole('ADMIN')")
+    fun generateMerenja(
+        @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) datum: LocalDate,
+        authentication: Authentication?
+    ): GenerateMerenjaResponse {
+        return bezMerenjaService.generateMerenjaFromOtpremnice(datum, authentication?.name)
     }
 
     @GetMapping("/{id}/pdf")

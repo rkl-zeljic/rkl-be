@@ -16,6 +16,11 @@ class LabelController(
         return labelService.getColumns()
     }
 
+    @GetMapping("/unassigned")
+    fun getUnassignedValues(@RequestParam columnName: String): UnassignedValuesResponse {
+        return labelService.getUnassignedValues(columnName)
+    }
+
     @GetMapping
     fun getLabels(@RequestParam columnName: String?): LabelsResponse {
         return if (columnName != null) {
