@@ -20,7 +20,8 @@ class PrevoznicaService(
     private val userRepository: UserRepository,
     private val primalacRepository: PrimalacRepository,
     private val prevoznicaPdfService: PrevoznicaPdfService,
-    private val emailService: EmailService
+    private val emailService: EmailService,
+    private val merenjeFromOtpremnicaService: MerenjeFromOtpremnicaService
 ) {
 
     private val log = LoggerFactory.getLogger(PrevoznicaService::class.java)
@@ -93,6 +94,12 @@ class PrevoznicaService(
         )
 
         val saved = prevoznicaRepository.save(prevoznica)
+
+        // Update linked merenje with prevoznica data
+        if (saved.otpremnica != null) {
+            merenjeFromOtpremnicaService.updateMerenjeFromPrevoznica(saved)
+        }
+
         return PrevoznicaDetailResponse(data = saved.toDto())
     }
 
@@ -138,6 +145,12 @@ class PrevoznicaService(
         prevoznica.additionalEmails = request.additionalEmails.takeIf { it.isNotEmpty() }?.joinToString(",")
 
         val saved = prevoznicaRepository.save(prevoznica)
+
+        // Update linked merenje with prevoznica data
+        if (saved.otpremnica != null) {
+            merenjeFromOtpremnicaService.updateMerenjeFromPrevoznica(saved)
+        }
+
         return PrevoznicaDetailResponse(data = saved.toDto())
     }
 

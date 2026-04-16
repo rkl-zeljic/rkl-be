@@ -30,6 +30,10 @@ interface MerenjeRepository : JpaRepository<Merenje, Long>, JpaSpecificationExec
 
     fun findByDatumIzvestajaAndMerniListBr(datumIzvestaja: LocalDate, merniListBr: Int): Optional<Merenje>
 
+    fun findByOtpremnicaId(otpremnicaId: Long): Merenje?
+
+    fun deleteByOtpremnicaId(otpremnicaId: Long)
+
     @Query("SELECT COALESCE(MAX(m.merniListBr), 0) FROM Merenje m WHERE m.datumIzvestaja = :datum")
     fun findMaxMerniListBrByDatum(@Param("datum") datum: LocalDate): Int
 

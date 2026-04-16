@@ -27,6 +27,13 @@ class Merenje(
     @JoinColumn(name = "imported_file_id")
     var importedFile: ImportedFile? = null,
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "otpremnica_id")
+    var otpremnica: Otpremnica? = null,
+
+    @Column(name = "izvor")
+    var izvor: String? = null,
+
     @Column(name = "datum_izvestaja")
     var datumIzvestaja: LocalDate? = null,
 

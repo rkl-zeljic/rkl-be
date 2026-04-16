@@ -4,8 +4,8 @@ import com.rkl.backend.dto.common.PaginationMeta
 
 data class ImportResponse(
     val status: String = "success",
-    val inserted: Int,
-    val updated: Int,
+    val matched: Int = 0,
+    val inserted: Int = 0,
     val totalRows: Int,
     val filename: String,
     val processingTimeMs: Long,
@@ -17,6 +17,11 @@ data class MeasurementDto(
     val id: Long?,
     val izvorFajl: String?,
     val importedFileId: Long? = null,
+    val otpremnicaId: Long? = null,
+    val otpremnicaBroj: String? = null,
+    val hasOtpremnica: Boolean = false,
+    val isValidated: Boolean = false,
+    val izvor: String? = null,
     val datumIzvestaja: String?,
     val merniListBr: Int,
     val posiljalac: String?,

@@ -16,5 +16,6 @@ data class ImportedFilesResponse(
 
 data class FileDeleteResponse(
     val status: String = "success",
-    val deletedMeasurements: Long
+    val deletedMeasurements: Long,
+    val devalidatedMeasurements: Long = 0
 )

@@ -5,6 +5,7 @@ import com.rkl.backend.dto.otpremnica.*
 import com.rkl.backend.entity.Otpremnica
 import com.rkl.backend.entity.OtpremnicaStatus
 import com.rkl.backend.entity.PrevoznicaStatus
+import com.rkl.backend.repository.MerenjeRepository
 import com.rkl.backend.repository.OtpremnicaRepository
 import com.rkl.backend.repository.PrevoznicaRepository
 import com.rkl.backend.repository.PrimalacRepository
@@ -17,11 +18,13 @@ import org.springframework.transaction.annotation.Transactional
 class OtpremnicaService(
     private val otpremnicaRepository: OtpremnicaRepository,
     private val prevoznicaRepository: PrevoznicaRepository,
+    private val merenjeRepository: MerenjeRepository,
     private val userRepository: UserRepository,
     private val primalacRepository: PrimalacRepository,
     private val otpremnicaPdfService: OtpremnicaPdfService,
     private val emailService: EmailService,
-    private val mailConfig: RklConfig.Mail
+    private val mailConfig: RklConfig.Mail,
+    private val merenjeFromOtpremnicaService: MerenjeFromOtpremnicaService
 ) {
 
     private val log = LoggerFactory.getLogger(OtpremnicaService::class.java)
@@ -76,6 +79,7 @@ class OtpremnicaService(
             bruto = request.bruto,
             tara = request.tara,
             neto = request.neto,
+            merniListBr = request.merniListBr,
             vozacUser = vozacUser,
             vozacIme = vozacUser.driverName ?: vozacUser.email ?: vozacUser.username ?: "",
             potpisVozaca = vozacUser.signature,
@@ -87,6 +91,12 @@ class OtpremnicaService(
         )
 
         val saved = otpremnicaRepository.save(otpremnica)
+
+        // Create merenje from otpremnica
+        if (saved.merniListBr != null) {
+            merenjeFromOtpremnicaService.createMerenjeFromOtpremnica(saved)
+        }
+
         return OtpremnicaDetailResponse(data = saved.toDto())
     }
 
@@ -131,10 +141,16 @@ class OtpremnicaService(
         otpremnica.vozacUser = vozacUser
         otpremnica.vozacIme = vozacUser.driverName ?: vozacUser.email ?: vozacUser.username ?: ""
         otpremnica.potpisVozaca = vozacUser.signature
+        otpremnica.merniListBr = request.merniListBr
         otpremnica.bezMerenja = request.bezMerenja
         otpremnica.additionalEmails = request.additionalEmails.takeIf { it.isNotEmpty() }?.joinToString(",")
 
         val saved = otpremnicaRepository.save(otpremnica)
+
+        // Update linked merenje
+        if (saved.merniListBr != null) {
+            merenjeFromOtpremnicaService.updateMerenjeFromOtpremnica(saved)
+        }
 
         // Cascade update to linked prevoznica (guaranteed KREIRANA at this point)
         if (linkedPrevoznica != null) {
@@ -209,6 +225,9 @@ class OtpremnicaService(
             throw IllegalStateException("Potpisana otpremnica se ne može obrisati")
         }
 
+        // Delete linked merenje first
+        merenjeFromOtpremnicaService.deleteMerenjeFromOtpremnica(otpremnica)
+
         val linkedPrevoznica = otpremnica.id?.let { prevoznicaRepository.findByOtpremnicaId(it) }
         if (linkedPrevoznica != null) {
             if (linkedPrevoznica.status == PrevoznicaStatus.POTPISANA) {
@@ -221,29 +240,35 @@ class OtpremnicaService(
         return OtpremnicaDeleteResponse(id = id)
     }
 
-    private fun Otpremnica.toDto(): OtpremnicaDto = OtpremnicaDto(
-        id = id,
-        brojOtpremnice = brojOtpremnice,
-        datum = datum.toString(),
-        porucilac = porucilac,
-        prevoznik = prevoznik,
-        registracija = registracija,
-        nazivRobe = nazivRobe,
-        jedinicaMere = jedinicaMere,
-        bruto = bruto,
-        tara = tara,
-        neto = neto,
-        vozacUserId = vozacUser?.id,
-        vozacIme = vozacIme,
-        potpisVozaca = !potpisVozaca.isNullOrBlank(),
-        potpisIzdavaoca = !potpisIzdavaoca.isNullOrBlank(),
-        potpisPrimaoca = !potpisPrimaoca.isNullOrBlank(),
-        bezMerenja = bezMerenja,
-        merenjeGenerated = merenjeGeneratedFile != null,
-        additionalEmails = additionalEmails?.split(",")?.map { it.trim() }?.filter { it.isNotBlank() } ?: emptyList(),
-        status = status.name,
-        createdBy = createdBy,
-        createdAt = createdAt?.toString(),
-        updatedAt = updatedAt?.toString()
-    )
+    private fun Otpremnica.toDto(): OtpremnicaDto {
+        val linkedMerenje = id?.let { merenjeRepository.findByOtpremnicaId(it) }
+        return OtpremnicaDto(
+            id = id,
+            brojOtpremnice = brojOtpremnice,
+            datum = datum.toString(),
+            porucilac = porucilac,
+            prevoznik = prevoznik,
+            registracija = registracija,
+            nazivRobe = nazivRobe,
+            jedinicaMere = jedinicaMere,
+            bruto = bruto,
+            tara = tara,
+            neto = neto,
+            merniListBr = merniListBr,
+            merenjeId = linkedMerenje?.id,
+            merenjeValidated = linkedMerenje?.importedFile != null,
+            vozacUserId = vozacUser?.id,
+            vozacIme = vozacIme,
+            potpisVozaca = !potpisVozaca.isNullOrBlank(),
+            potpisIzdavaoca = !potpisIzdavaoca.isNullOrBlank(),
+            potpisPrimaoca = !potpisPrimaoca.isNullOrBlank(),
+            bezMerenja = bezMerenja,
+            merenjeGenerated = merenjeGeneratedFile != null,
+            additionalEmails = additionalEmails?.split(",")?.map { it.trim() }?.filter { it.isNotBlank() } ?: emptyList(),
+            status = status.name,
+            createdBy = createdBy,
+            createdAt = createdAt?.toString(),
+            updatedAt = updatedAt?.toString()
+        )
+    }
 }

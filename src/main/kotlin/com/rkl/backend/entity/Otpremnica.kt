@@ -74,6 +74,9 @@ class Otpremnica(
     @Column(name = "potpis_primaoca", columnDefinition = "TEXT")
     var potpisPrimaoca: String? = null,
 
+    @Column(name = "merni_list_br")
+    var merniListBr: Int? = null,
+
     @Column(name = "bez_merenja", nullable = false)
     var bezMerenja: Boolean = false,
 

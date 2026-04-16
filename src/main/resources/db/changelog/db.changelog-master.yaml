@@ -11,3 +11,5 @@ databaseChangeLog:
       file: db/changelog/005-additional-emails.yaml
   - include:
       file: db/changelog/006-signature-requests.yaml
+  - include:
+      file: db/changelog/007-merenje-refactor.yaml

@@ -1,0 +1,54 @@
+databaseChangeLog:
+  - changeSet:
+      id: 007-1-add-merni-list-br-to-otpremnice
+      author: rkl
+      changes:
+        - addColumn:
+            tableName: otpremnice
+            columns:
+              - column:
+                  name: merni_list_br
+                  type: int
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: 007-2-add-otpremnica-id-to-merenja
+      author: rkl
+      changes:
+        - addColumn:
+            tableName: merenja
+            columns:
+              - column:
+                  name: otpremnica_id
+                  type: bigint
+                  constraints:
+                    nullable: true
+                    foreignKeyName: fk_merenja_otpremnica
+                    references: otpremnice(id)
+        - createIndex:
+            tableName: merenja
+            indexName: ix_merenja_otpremnica
+            columns:
+              - column:
+                  name: otpremnica_id
+
+  - changeSet:
+      id: 007-3-add-izvor-to-merenja
+      author: rkl
+      changes:
+        - addColumn:
+            tableName: merenja
+            columns:
+              - column:
+                  name: izvor
+                  type: varchar(50)
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: 007-4-set-izvor-for-existing-data
+      author: rkl
+      changes:
+        - sql:
+            sql: UPDATE merenja SET izvor = 'IMPORT' WHERE imported_file_id IS NOT NULL AND izvor IS NULL

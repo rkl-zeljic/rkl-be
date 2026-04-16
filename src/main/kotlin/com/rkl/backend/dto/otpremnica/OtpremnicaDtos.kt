@@ -19,6 +19,7 @@ data class CreateOtpremnicaRequest(
     val tara: Double,
     val neto: Double,
 
+    val merniListBr: Int? = null,
     val vozacUserId: Long,
     val bezMerenja: Boolean = false,
     val additionalEmails: List<String> = emptyList()
@@ -40,6 +41,7 @@ data class UpdateOtpremnicaRequest(
     val tara: Double,
     val neto: Double,
 
+    val merniListBr: Int? = null,
     val vozacUserId: Long,
     val bezMerenja: Boolean = false,
     val additionalEmails: List<String> = emptyList()
@@ -61,6 +63,9 @@ data class OtpremnicaDto(
     val bruto: Double,
     val tara: Double,
     val neto: Double,
+    val merniListBr: Int? = null,
+    val merenjeId: Long? = null,
+    val merenjeValidated: Boolean = false,
     val vozacUserId: Long?,
     val vozacIme: String,
     val potpisVozaca: Boolean,

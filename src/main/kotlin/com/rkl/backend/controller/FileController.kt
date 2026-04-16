@@ -46,15 +46,28 @@ class FileController(
             NoSuchElementException("File with id $id not found")
         }
 
-        val measurementCount = merenjeRepository.countByImportedFileId(id)
-
         // Delete blob from Azure
         azureBlobStorageService.delete(file.blobName)
 
-        // JPA cascade will delete all linked merenja
+        // Smart delete: only delete import-only merenja, de-validate otpremnica-sourced ones
+        var deletedCount = 0L
+        var devalidatedCount = 0L
+        for (merenje in file.merenja.toList()) {
+            if (merenje.otpremnica != null) {
+                // Merenje has otpremnica source - just de-validate
+                merenje.importedFile = null
+                merenjeRepository.save(merenje)
+                devalidatedCount++
+            } else {
+                // Import-only merenje - delete it
+                merenjeRepository.delete(merenje)
+                deletedCount++
+            }
+        }
+
         importedFileRepository.delete(file)
 
-        return FileDeleteResponse(deletedMeasurements = measurementCount)
+        return FileDeleteResponse(deletedMeasurements = deletedCount, devalidatedMeasurements = devalidatedCount)
     }
 
     @GetMapping("/{id}/download")

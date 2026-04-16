@@ -101,8 +101,8 @@ class MeasurementService(
                 recordCount = parsedRows.size
             ))
 
+            var matched = 0
             var inserted = 0
-            var updated = 0
             for (row in parsedRows) {
                 val effectiveDate = row.datum ?: reportDate
                 val existingOpt = if (effectiveDate != null) {
@@ -113,12 +113,18 @@ class MeasurementService(
 
                 if (existingOpt.isPresent) {
                     val entity = existingOpt.get()
-                    applyRowToEntity(entity, row, importedFile, reportDate)
+                    // Validate/link existing merenje to this file
+                    entity.importedFile = importedFile
+                    if (entity.izvor == null) {
+                        entity.izvor = "IMPORT"
+                    }
                     repository.save(entity)
-                    updated++
+                    matched++
                 } else {
+                    // No existing merenje - create new from import
                     val entity = Merenje()
                     applyRowToEntity(entity, row, importedFile, reportDate)
+                    entity.izvor = "IMPORT"
                     repository.save(entity)
                     inserted++
                 }
@@ -126,8 +132,8 @@ class MeasurementService(
 
             val processingTimeMs = System.currentTimeMillis() - startTime
             return ImportResponse(
+                matched = matched,
                 inserted = inserted,
-                updated = updated,
                 totalRows = parsedRows.size,
                 filename = filename,
                 processingTimeMs = processingTimeMs,
@@ -381,6 +387,11 @@ class MeasurementService(
         id = id,
         izvorFajl = importedFile?.originalFilename,
         importedFileId = importedFile?.id,
+        otpremnicaId = otpremnica?.id,
+        otpremnicaBroj = otpremnica?.brojOtpremnice,
+        hasOtpremnica = otpremnica != null,
+        isValidated = importedFile != null,
+        izvor = izvor,
         datumIzvestaja = datumIzvestaja?.toString(),
         merniListBr = merniListBr,
         posiljalac = posiljalac,

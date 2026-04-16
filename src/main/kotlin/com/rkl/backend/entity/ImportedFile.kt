@@ -32,7 +32,7 @@ class ImportedFile(
     @Column(name = "created_at")
     var createdAt: LocalDateTime? = null,
 
-    @OneToMany(mappedBy = "importedFile", cascade = [CascadeType.REMOVE], orphanRemoval = true)
+    @OneToMany(mappedBy = "importedFile")
     var merenja: MutableList<Merenje> = mutableListOf()
 ) {
 
