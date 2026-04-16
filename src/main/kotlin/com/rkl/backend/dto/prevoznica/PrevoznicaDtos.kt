@@ -29,7 +29,38 @@ data class CreatePrevoznicaRequest(
     val stvarnaTezina: Double? = null,
 
     val vozacUserId: Long,
-    val otpremnicaId: Long? = null
+    val otpremnicaId: Long? = null,
+    val additionalEmails: List<String> = emptyList()
+)
+
+data class UpdatePrevoznicaRequest(
+    @field:DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
+    val datum: LocalDate,
+
+    val posiljalac: String,
+    val platilacPrevoza: String,
+    val primalac: String,
+    val prevozilac: String,
+    val pratecaDokumenta: String? = null,
+
+    val mestoUtovara: String,
+    val mestoIstovara: String,
+    val registracija: String,
+
+    @field:DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
+    val datumUtovara: LocalDate,
+
+    @field:DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
+    val datumIstovara: LocalDate,
+
+    val vrstaRobe: String,
+    val km: Double? = null,
+    val jedMere: String = "kg",
+    val stvarnaTezina: Double? = null,
+
+    val vozacUserId: Long,
+    val otpremnicaId: Long? = null,
+    val additionalEmails: List<String> = emptyList()
 )
 
 data class UpdatePrevoznicaSignatureRequest(
@@ -60,6 +91,7 @@ data class PrevoznicaDto(
     val otpremnicaBroj: String?,
     val potpisVozaca: Boolean,
     val potpisPrimaoca: Boolean,
+    val additionalEmails: List<String> = emptyList(),
     val status: String,
     val createdBy: String?,
     val createdAt: String?,

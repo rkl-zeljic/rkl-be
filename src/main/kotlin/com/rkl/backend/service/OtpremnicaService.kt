@@ -1,9 +1,12 @@
 package com.rkl.backend.service
 
+import com.rkl.backend.config.RklConfig
 import com.rkl.backend.dto.otpremnica.*
 import com.rkl.backend.entity.Otpremnica
 import com.rkl.backend.entity.OtpremnicaStatus
+import com.rkl.backend.entity.PrevoznicaStatus
 import com.rkl.backend.repository.OtpremnicaRepository
+import com.rkl.backend.repository.PrevoznicaRepository
 import com.rkl.backend.repository.PrimalacRepository
 import com.rkl.backend.repository.UserRepository
 import org.slf4j.LoggerFactory
@@ -13,10 +16,12 @@ import org.springframework.transaction.annotation.Transactional
 @Service
 class OtpremnicaService(
     private val otpremnicaRepository: OtpremnicaRepository,
+    private val prevoznicaRepository: PrevoznicaRepository,
     private val userRepository: UserRepository,
     private val primalacRepository: PrimalacRepository,
     private val otpremnicaPdfService: OtpremnicaPdfService,
-    private val emailService: EmailService
+    private val emailService: EmailService,
+    private val mailConfig: RklConfig.Mail
 ) {
 
     private val log = LoggerFactory.getLogger(OtpremnicaService::class.java)
@@ -76,27 +81,75 @@ class OtpremnicaService(
             potpisVozaca = vozacUser.signature,
             potpisIzdavaoca = DEFAULT_IZDAVALAC_SIGNATURE,
             bezMerenja = request.bezMerenja,
+            additionalEmails = request.additionalEmails.takeIf { it.isNotEmpty() }?.joinToString(","),
             status = OtpremnicaStatus.KREIRANA,
             createdBy = createdBy
         )
 
         val saved = otpremnicaRepository.save(otpremnica)
+        return OtpremnicaDetailResponse(data = saved.toDto())
+    }
 
-        // Send PDF to buyer if email is available
-        try {
-            val primalac = primalacRepository.findByNaziv(request.porucilac)
-            if (primalac?.email != null) {
-                val pdfBytes = otpremnicaPdfService.generatePdf(saved.id!!)
-                emailService.sendDocumentWithAttachment(
-                    toEmail = primalac.email!!,
-                    documentType = "Otpremnica",
-                    documentNumber = request.brojOtpremnice,
-                    porucilac = request.porucilac,
-                    pdfBytes = pdfBytes
-                )
+    @Transactional
+    fun updateOtpremnica(id: Long, request: UpdateOtpremnicaRequest, updatedBy: String?): OtpremnicaDetailResponse {
+        val otpremnica = otpremnicaRepository.findById(id).orElseThrow {
+            NoSuchElementException("Otpremnica sa id $id nije pronađena")
+        }
+
+        if (otpremnica.status != OtpremnicaStatus.KREIRANA) {
+            throw IllegalStateException("Potpisana otpremnica se ne može menjati")
+        }
+
+        // Check if linked prevoznica is signed
+        val linkedPrevoznica = otpremnica.id?.let { prevoznicaRepository.findByOtpremnicaId(it) }
+        if (linkedPrevoznica != null && linkedPrevoznica.status != PrevoznicaStatus.KREIRANA) {
+            throw IllegalStateException("Ne može se menjati otpremnica čija prevoznica je potpisana")
+        }
+
+        val vozacUser = userRepository.findById(request.vozacUserId).orElseThrow {
+            NoSuchElementException("Vozač sa id ${request.vozacUserId} nije pronađen")
+        }
+
+        // Validate uniqueness of number if changed
+        if (request.brojOtpremnice != otpremnica.brojOtpremnice) {
+            val existing = otpremnicaRepository.findByBrojOtpremnice(request.brojOtpremnice)
+            if (existing != null) {
+                throw IllegalArgumentException("Otpremnica sa brojem ${request.brojOtpremnice} već postoji")
             }
-        } catch (e: Exception) {
-            log.error("Failed to send otpremnica email: {}", e.message)
+        }
+
+        otpremnica.brojOtpremnice = request.brojOtpremnice
+        otpremnica.datum = request.datum
+        otpremnica.porucilac = request.porucilac
+        otpremnica.prevoznik = request.prevoznik
+        otpremnica.registracija = request.registracija
+        otpremnica.nazivRobe = request.nazivRobe
+        otpremnica.jedinicaMere = request.jedinicaMere
+        otpremnica.bruto = request.bruto
+        otpremnica.tara = request.tara
+        otpremnica.neto = request.neto
+        otpremnica.vozacUser = vozacUser
+        otpremnica.vozacIme = vozacUser.driverName ?: vozacUser.email ?: vozacUser.username ?: ""
+        otpremnica.potpisVozaca = vozacUser.signature
+        otpremnica.bezMerenja = request.bezMerenja
+        otpremnica.additionalEmails = request.additionalEmails.takeIf { it.isNotEmpty() }?.joinToString(",")
+
+        val saved = otpremnicaRepository.save(otpremnica)
+
+        // Cascade update to linked prevoznica (guaranteed KREIRANA at this point)
+        if (linkedPrevoznica != null) {
+            linkedPrevoznica.pratecaDokumenta = request.brojOtpremnice
+            linkedPrevoznica.primalac = request.porucilac
+            linkedPrevoznica.prevozilac = request.prevoznik
+            linkedPrevoznica.registracija = request.registracija
+            linkedPrevoznica.vrstaRobe = request.nazivRobe
+            linkedPrevoznica.jedMere = request.jedinicaMere
+            linkedPrevoznica.stvarnaTezina = request.neto
+            linkedPrevoznica.datumUtovara = request.datum
+            linkedPrevoznica.vozacUser = vozacUser
+            linkedPrevoznica.vozacIme = vozacUser.driverName ?: vozacUser.email ?: vozacUser.username ?: ""
+            linkedPrevoznica.potpisVozaca = vozacUser.signature
+            prevoznicaRepository.save(linkedPrevoznica)
         }
 
         return OtpremnicaDetailResponse(data = saved.toDto())
@@ -116,6 +169,33 @@ class OtpremnicaService(
         otpremnica.status = OtpremnicaStatus.POTPISANA
 
         val saved = otpremnicaRepository.save(otpremnica)
+
+        // Send PDF to all relevant parties on signature
+        try {
+            val recipients = mutableListOf<String>()
+            recipients.add(mailConfig.adminEmail)
+            val primalac = primalacRepository.findByNaziv(saved.porucilac)
+            if (primalac?.email != null) {
+                recipients.add(primalac.email!!)
+            }
+            saved.additionalEmails?.split(",")?.map { it.trim() }?.filter { it.isNotBlank() }
+                ?.let { recipients.addAll(it) }
+
+            val uniqueRecipients = recipients.distinct()
+            if (uniqueRecipients.isNotEmpty()) {
+                val pdfBytes = otpremnicaPdfService.generatePdf(saved.id!!)
+                emailService.sendDocumentWithAttachment(
+                    toEmails = uniqueRecipients,
+                    documentType = "Otpremnica",
+                    documentNumber = saved.brojOtpremnice,
+                    porucilac = saved.porucilac,
+                    pdfBytes = pdfBytes
+                )
+            }
+        } catch (e: Exception) {
+            log.error("Failed to send otpremnica email on signature: {}", e.message)
+        }
+
         return OtpremnicaDetailResponse(data = saved.toDto())
     }
 
@@ -124,6 +204,19 @@ class OtpremnicaService(
         val otpremnica = otpremnicaRepository.findById(id).orElseThrow {
             NoSuchElementException("Otpremnica sa id $id nije pronađena")
         }
+
+        if (otpremnica.status == OtpremnicaStatus.POTPISANA) {
+            throw IllegalStateException("Potpisana otpremnica se ne može obrisati")
+        }
+
+        val linkedPrevoznica = otpremnica.id?.let { prevoznicaRepository.findByOtpremnicaId(it) }
+        if (linkedPrevoznica != null) {
+            if (linkedPrevoznica.status == PrevoznicaStatus.POTPISANA) {
+                throw IllegalStateException("Ne može se obrisati otpremnica čija prevoznica je potpisana")
+            }
+            prevoznicaRepository.delete(linkedPrevoznica)
+        }
+
         otpremnicaRepository.delete(otpremnica)
         return OtpremnicaDeleteResponse(id = id)
     }
@@ -147,6 +240,7 @@ class OtpremnicaService(
         potpisPrimaoca = !potpisPrimaoca.isNullOrBlank(),
         bezMerenja = bezMerenja,
         merenjeGenerated = merenjeGeneratedFile != null,
+        additionalEmails = additionalEmails?.split(",")?.map { it.trim() }?.filter { it.isNotBlank() } ?: emptyList(),
         status = status.name,
         createdBy = createdBy,
         createdAt = createdAt?.toString(),

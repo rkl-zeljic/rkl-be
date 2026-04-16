@@ -17,5 +17,7 @@ interface UserService {
     fun getCurrentUser(name: String): UserResponseDTO
     fun updateCurrentUser(name: String, updateCurrentUserRequestDTO: UpdateCurrentUserRequestDTO): UserResponseDTO
     fun getCurrentUserOrCreateIfNotExist(name: String, isAdmin: Boolean = false): UserResponseDTO
-    fun updateCurrentUserSignature(email: String, signature: String?): UserResponseDTO
+    fun createCurrentUserSignature(email: String, signature: String): UserResponseDTO
+    fun updateCurrentUserSignature(email: String, signature: String): UserResponseDTO
+    fun deleteCurrentUserSignature(email: String): UserResponseDTO
 }

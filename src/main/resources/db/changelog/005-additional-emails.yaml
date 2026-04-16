@@ -1,0 +1,29 @@
+databaseChangeLog:
+  - changeSet:
+      id: 005-add-additional-emails
+      author: rkl
+      changes:
+        - addColumn:
+            tableName: otpremnice
+            columns:
+              - column:
+                  name: additional_emails
+                  type: TEXT
+                  constraints:
+                    nullable: true
+        - addColumn:
+            tableName: prevoznice
+            columns:
+              - column:
+                  name: additional_emails
+                  type: TEXT
+                  constraints:
+                    nullable: true
+        - addColumn:
+            tableName: fakture
+            columns:
+              - column:
+                  name: additional_emails
+                  type: TEXT
+                  constraints:
+                    nullable: true

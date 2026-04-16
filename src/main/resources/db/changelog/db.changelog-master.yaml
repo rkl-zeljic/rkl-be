@@ -5,3 +5,9 @@ databaseChangeLog:
       file: db/changelog/002-basic-auth.yaml
   - include:
       file: db/changelog/003-bez-merenja.yaml
+  - include:
+      file: db/changelog/004-kupci-prevoznici.yaml
+  - include:
+      file: db/changelog/005-additional-emails.yaml
+  - include:
+      file: db/changelog/006-signature-requests.yaml

@@ -43,19 +43,20 @@ class EmailService(
 
     @Async
     fun sendFakturaWithAttachment(
-        toEmail: String,
+        toEmails: List<String>,
         brojFakture: String,
         porucilac: String,
         fileBytes: ByteArray,
         fileName: String,
         mimeType: String
     ) {
+        if (toEmails.isEmpty()) return
         try {
             val mimeMessage: MimeMessage = mailSender.createMimeMessage()
             val helper = MimeMessageHelper(mimeMessage, true, "UTF-8")
 
             helper.setFrom(fromEmail)
-            helper.setTo(toEmail)
+            helper.setTo(toEmails.toTypedArray())
             helper.setSubject("Faktura $brojFakture - $porucilac")
             helper.setText("""
                 Poštovani,
@@ -69,27 +70,28 @@ class EmailService(
             helper.addAttachment(fileName, ByteArrayResource(fileBytes), mimeType)
 
             mailSender.send(mimeMessage)
-            log.info("Faktura {} sent as attachment to {}", brojFakture, toEmail)
+            log.info("Faktura {} sent as attachment to {}", brojFakture, toEmails)
         } catch (e: Exception) {
-            log.error("Failed to send faktura {} to {}: {}", brojFakture, toEmail, e.message)
+            log.error("Failed to send faktura {} to {}: {}", brojFakture, toEmails, e.message)
             throw RuntimeException("Greška pri slanju emaila: ${e.message}")
         }
     }
 
     @Async
     fun sendDocumentWithAttachment(
-        toEmail: String,
+        toEmails: List<String>,
         documentType: String,
         documentNumber: String,
         porucilac: String,
         pdfBytes: ByteArray
     ) {
+        if (toEmails.isEmpty()) return
         try {
             val mimeMessage: MimeMessage = mailSender.createMimeMessage()
             val helper = MimeMessageHelper(mimeMessage, true, "UTF-8")
 
             helper.setFrom(fromEmail)
-            helper.setTo(toEmail)
+            helper.setTo(toEmails.toTypedArray())
             helper.setSubject("$documentType $documentNumber - $porucilac")
             helper.setText("""
                 Poštovani,
@@ -104,9 +106,9 @@ class EmailService(
             helper.addAttachment(fileName, ByteArrayResource(pdfBytes), "application/pdf")
 
             mailSender.send(mimeMessage)
-            log.info("{} {} sent to {}", documentType, documentNumber, toEmail)
+            log.info("{} {} sent to {}", documentType, documentNumber, toEmails)
         } catch (e: Exception) {
-            log.error("Failed to send {} {} to {}: {}", documentType, documentNumber, toEmail, e.message)
+            log.error("Failed to send {} {} to {}: {}", documentType, documentNumber, toEmails, e.message)
         }
     }
 }

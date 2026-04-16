@@ -1,0 +1,63 @@
+databaseChangeLog:
+  - changeSet:
+      id: 006-create-signature-requests
+      author: rkl
+      changes:
+        - createTable:
+            tableName: signature_requests
+            columns:
+              - column:
+                  name: id
+                  type: BIGINT
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: user_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+                    foreignKeyName: fk_signature_request_user
+                    references: rkl_user(id)
+              - column:
+                  name: new_signature
+                  type: TEXT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: status
+                  type: VARCHAR(20)
+                  defaultValue: NA_CEKANJU
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: TIMESTAMP WITH TIME ZONE
+                  defaultValueComputed: NOW()
+                  constraints:
+                    nullable: false
+              - column:
+                  name: resolved_at
+                  type: TIMESTAMP WITH TIME ZONE
+                  constraints:
+                    nullable: true
+              - column:
+                  name: resolved_by
+                  type: BIGINT
+                  constraints:
+                    nullable: true
+                    foreignKeyName: fk_signature_request_resolved_by
+                    references: rkl_user(id)
+        - createIndex:
+            indexName: ix_signature_requests_user_id
+            tableName: signature_requests
+            columns:
+              - column:
+                  name: user_id
+        - createIndex:
+            indexName: ix_signature_requests_status
+            tableName: signature_requests
+            columns:
+              - column:
+                  name: status

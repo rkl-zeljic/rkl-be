@@ -1,0 +1,111 @@
+databaseChangeLog:
+
+  # ── Kupac ───────────────────────────────────────────────────────────
+  - changeSet:
+      id: 004-create-kupci
+      author: rkl
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - tableExists:
+                tableName: kupci
+      changes:
+        - createTable:
+            tableName: kupci
+            columns:
+              - column:
+                  name: id
+                  type: bigint
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: naziv
+                  type: varchar(255)
+                  constraints:
+                    nullable: false
+                    unique: true
+              - column:
+                  name: email
+                  type: varchar(255)
+              - column:
+                  name: telefon
+                  type: varchar(255)
+              - column:
+                  name: adresa
+                  type: varchar(255)
+              - column:
+                  name: napomena
+                  type: text
+              - column:
+                  name: created_at
+                  type: timestamp
+              - column:
+                  name: updated_at
+                  type: timestamp
+        - addUniqueConstraint:
+            tableName: kupci
+            columnNames: naziv
+            constraintName: ux_kupci_naziv
+        - createIndex:
+            tableName: kupci
+            indexName: ix_kupci_naziv
+            columns:
+              - column:
+                  name: naziv
+
+  # ── Prevoznik ───────────────────────────────────────────────────────
+  - changeSet:
+      id: 004-create-prevoznici
+      author: rkl
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - tableExists:
+                tableName: prevoznici
+      changes:
+        - createTable:
+            tableName: prevoznici
+            columns:
+              - column:
+                  name: id
+                  type: bigint
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: naziv
+                  type: varchar(255)
+                  constraints:
+                    nullable: false
+                    unique: true
+              - column:
+                  name: email
+                  type: varchar(255)
+              - column:
+                  name: telefon
+                  type: varchar(255)
+              - column:
+                  name: adresa
+                  type: varchar(255)
+              - column:
+                  name: napomena
+                  type: text
+              - column:
+                  name: created_at
+                  type: timestamp
+              - column:
+                  name: updated_at
+                  type: timestamp
+        - addUniqueConstraint:
+            tableName: prevoznici
+            columnNames: naziv
+            constraintName: ux_prevoznici_naziv
+        - createIndex:
+            tableName: prevoznici
+            indexName: ix_prevoznici_naziv
+            columns:
+              - column:
+                  name: naziv

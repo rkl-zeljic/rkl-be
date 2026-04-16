@@ -47,6 +47,16 @@ class OtpremnicaController(
         return otpremnicaService.createOtpremnica(request, createdBy = authentication?.name)
     }
 
+    @PutMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
+    fun updateOtpremnica(
+        @PathVariable id: Long,
+        @Valid @RequestBody request: UpdateOtpremnicaRequest,
+        authentication: Authentication?
+    ): OtpremnicaDetailResponse {
+        return otpremnicaService.updateOtpremnica(id, request, updatedBy = authentication?.name)
+    }
+
     @PatchMapping("/{id}/signature")
     fun updatePrimalacSignature(
         @PathVariable id: Long,

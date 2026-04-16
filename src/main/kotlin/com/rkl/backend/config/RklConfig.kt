@@ -8,6 +8,11 @@ import org.springframework.context.annotation.Configuration
 @ConfigurationPropertiesScan
 class RklConfig {
 
+    @ConfigurationProperties(prefix = "rkl.mail")
+    class Mail(
+        val adminEmail: String
+    )
+
     @ConfigurationProperties(prefix = "rkl.security")
     class Security(
         val enabled: Boolean,

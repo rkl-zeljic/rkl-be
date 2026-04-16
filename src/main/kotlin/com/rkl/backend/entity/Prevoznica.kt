@@ -97,6 +97,9 @@ class Prevoznica(
     @Column(name = "potpis_primaoca", columnDefinition = "TEXT")
     var potpisPrimaoca: String? = null,
 
+    @Column(name = "additional_emails", columnDefinition = "TEXT")
+    var additionalEmails: String? = null,
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     var status: PrevoznicaStatus = PrevoznicaStatus.KREIRANA,

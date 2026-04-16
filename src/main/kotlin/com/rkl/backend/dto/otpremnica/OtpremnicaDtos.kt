@@ -20,7 +20,29 @@ data class CreateOtpremnicaRequest(
     val neto: Double,
 
     val vozacUserId: Long,
-    val bezMerenja: Boolean = false
+    val bezMerenja: Boolean = false,
+    val additionalEmails: List<String> = emptyList()
+)
+
+data class UpdateOtpremnicaRequest(
+    val brojOtpremnice: String,
+
+    @field:DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
+    val datum: LocalDate,
+
+    val porucilac: String,
+    val prevoznik: String,
+    val registracija: String,
+
+    val nazivRobe: String,
+    val jedinicaMere: String = "Kg",
+    val bruto: Double,
+    val tara: Double,
+    val neto: Double,
+
+    val vozacUserId: Long,
+    val bezMerenja: Boolean = false,
+    val additionalEmails: List<String> = emptyList()
 )
 
 data class UpdateOtpremnicaSignatureRequest(
@@ -46,6 +68,7 @@ data class OtpremnicaDto(
     val potpisPrimaoca: Boolean,
     val bezMerenja: Boolean,
     val merenjeGenerated: Boolean,
+    val additionalEmails: List<String> = emptyList(),
     val status: String,
     val createdBy: String?,
     val createdAt: String?,

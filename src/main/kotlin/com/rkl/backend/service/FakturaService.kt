@@ -127,7 +127,7 @@ class FakturaService(
         }
 
         emailService.sendFakturaWithAttachment(
-            toEmail = request.email,
+            toEmails = request.emails,
             brojFakture = faktura.brojFakture,
             porucilac = faktura.porucilac,
             fileBytes = fileBytes,
@@ -135,7 +135,7 @@ class FakturaService(
             mimeType = mimeType
         )
 
-        return SendFakturaEmailResponse(message = "Email poslat na ${request.email}")
+        return SendFakturaEmailResponse(message = "Email poslat na ${request.emails.joinToString(", ")}")
     }
 
     @Transactional

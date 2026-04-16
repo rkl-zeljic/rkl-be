@@ -38,8 +38,10 @@ class PrevoznicaPdfService(
         PdfWriter.getInstance(document, outputStream)
         document.open()
 
-        val baseFont = BaseFont.createFont(BaseFont.HELVETICA, BaseFont.CP1250, BaseFont.EMBEDDED)
-        val baseFontBold = BaseFont.createFont(BaseFont.HELVETICA_BOLD, BaseFont.CP1250, BaseFont.EMBEDDED)
+        val fontStream = this::class.java.getResourceAsStream("/fonts/DejaVuSans.ttf")!!.readBytes()
+        val fontBoldStream = this::class.java.getResourceAsStream("/fonts/DejaVuSans-Bold.ttf")!!.readBytes()
+        val baseFont = BaseFont.createFont("DejaVuSans.ttf", BaseFont.IDENTITY_H, BaseFont.EMBEDDED, true, fontStream, null)
+        val baseFontBold = BaseFont.createFont("DejaVuSans-Bold.ttf", BaseFont.IDENTITY_H, BaseFont.EMBEDDED, true, fontBoldStream, null)
 
         val titleFont = Font(baseFontBold, 16f, Font.BOLD)
         val numberFont = Font(baseFontBold, 16f, Font.BOLD, TEAL)

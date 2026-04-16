@@ -38,8 +38,10 @@ class OtpremnicaPdfService(
         PdfWriter.getInstance(document, outputStream)
         document.open()
 
-        val baseFont = BaseFont.createFont(BaseFont.HELVETICA, BaseFont.CP1250, BaseFont.EMBEDDED)
-        val baseFontBold = BaseFont.createFont(BaseFont.HELVETICA_BOLD, BaseFont.CP1250, BaseFont.EMBEDDED)
+        val fontStream = this::class.java.getResourceAsStream("/fonts/DejaVuSans.ttf")!!.readBytes()
+        val fontBoldStream = this::class.java.getResourceAsStream("/fonts/DejaVuSans-Bold.ttf")!!.readBytes()
+        val baseFont = BaseFont.createFont("DejaVuSans.ttf", BaseFont.IDENTITY_H, BaseFont.EMBEDDED, true, fontStream, null)
+        val baseFontBold = BaseFont.createFont("DejaVuSans-Bold.ttf", BaseFont.IDENTITY_H, BaseFont.EMBEDDED, true, fontBoldStream, null)
 
         val subtitleFont = Font(baseFont, 9f, Font.ITALIC)
         val labelFont = Font(baseFont, 9f)

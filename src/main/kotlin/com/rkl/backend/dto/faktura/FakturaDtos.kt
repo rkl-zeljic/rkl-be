@@ -56,7 +56,7 @@ data class FakturaDeleteResponse(
 )
 
 data class SendFakturaEmailRequest(
-    val email: String,
+    val emails: List<String>,
     val format: String = "pdf" // "pdf" or "excel"
 )
 

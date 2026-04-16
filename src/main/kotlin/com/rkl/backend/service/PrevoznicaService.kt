@@ -87,29 +87,57 @@ class PrevoznicaService(
             vozacUser = vozacUser,
             vozacIme = vozacUser.driverName ?: vozacUser.email ?: vozacUser.username ?: "",
             potpisVozaca = vozacUser.signature,
+            additionalEmails = request.additionalEmails.takeIf { it.isNotEmpty() }?.joinToString(","),
             status = PrevoznicaStatus.KREIRANA,
             createdBy = createdBy
         )
 
         val saved = prevoznicaRepository.save(prevoznica)
+        return PrevoznicaDetailResponse(data = saved.toDto())
+    }
 
-        // Send PDF to buyer if email is available
-        try {
-            val primalacEntity = primalacRepository.findByNaziv(request.primalac)
-            if (primalacEntity?.email != null) {
-                val pdfBytes = prevoznicaPdfService.generatePdf(saved.id!!)
-                emailService.sendDocumentWithAttachment(
-                    toEmail = primalacEntity.email!!,
-                    documentType = "Prevoznica",
-                    documentNumber = brojPrevoznice,
-                    porucilac = request.primalac,
-                    pdfBytes = pdfBytes
-                )
-            }
-        } catch (e: Exception) {
-            log.error("Failed to send prevoznica email: {}", e.message)
+    @Transactional
+    fun updatePrevoznica(id: Long, request: UpdatePrevoznicaRequest, updatedBy: String?): PrevoznicaDetailResponse {
+        val prevoznica = prevoznicaRepository.findById(id).orElseThrow {
+            NoSuchElementException("Prevoznica sa id $id nije pronađena")
         }
 
+        if (prevoznica.status != PrevoznicaStatus.KREIRANA) {
+            throw IllegalStateException("Potpisana prevoznica se ne može menjati")
+        }
+
+        val vozacUser = userRepository.findById(request.vozacUserId).orElseThrow {
+            NoSuchElementException("Vozač sa id ${request.vozacUserId} nije pronađen")
+        }
+
+        val otpremnica = request.otpremnicaId?.let {
+            otpremnicaRepository.findById(it).orElseThrow {
+                NoSuchElementException("Otpremnica sa id $it nije pronađena")
+            }
+        }
+
+        prevoznica.datum = request.datum
+        prevoznica.posiljalac = request.posiljalac
+        prevoznica.platilacPrevoza = request.platilacPrevoza
+        prevoznica.primalac = request.primalac
+        prevoznica.prevozilac = request.prevozilac
+        prevoznica.pratecaDokumenta = request.pratecaDokumenta
+        prevoznica.mestoUtovara = request.mestoUtovara
+        prevoznica.mestoIstovara = request.mestoIstovara
+        prevoznica.registracija = request.registracija
+        prevoznica.datumUtovara = request.datumUtovara
+        prevoznica.datumIstovara = request.datumIstovara
+        prevoznica.vrstaRobe = request.vrstaRobe
+        prevoznica.km = request.km
+        prevoznica.jedMere = request.jedMere
+        prevoznica.stvarnaTezina = request.stvarnaTezina
+        prevoznica.otpremnica = otpremnica
+        prevoznica.vozacUser = vozacUser
+        prevoznica.vozacIme = vozacUser.driverName ?: vozacUser.email ?: vozacUser.username ?: ""
+        prevoznica.potpisVozaca = vozacUser.signature
+        prevoznica.additionalEmails = request.additionalEmails.takeIf { it.isNotEmpty() }?.joinToString(",")
+
+        val saved = prevoznicaRepository.save(prevoznica)
         return PrevoznicaDetailResponse(data = saved.toDto())
     }
 
@@ -127,6 +155,39 @@ class PrevoznicaService(
         prevoznica.status = PrevoznicaStatus.POTPISANA
 
         val saved = prevoznicaRepository.save(prevoznica)
+
+        // Send PDF to all relevant parties on signature
+        try {
+            val recipients = mutableListOf<String>()
+            // Firma koja prevozi
+            val prevozilacEntity = primalacRepository.findByNaziv(saved.prevozilac)
+            if (prevozilacEntity?.email != null) {
+                recipients.add(prevozilacEntity.email!!)
+            }
+            // Firma koja prima
+            val primalacEntity = primalacRepository.findByNaziv(saved.primalac)
+            if (primalacEntity?.email != null) {
+                recipients.add(primalacEntity.email!!)
+            }
+            // Additional emails
+            saved.additionalEmails?.split(",")?.map { it.trim() }?.filter { it.isNotBlank() }
+                ?.let { recipients.addAll(it) }
+
+            val uniqueRecipients = recipients.distinct()
+            if (uniqueRecipients.isNotEmpty()) {
+                val pdfBytes = prevoznicaPdfService.generatePdf(saved.id!!)
+                emailService.sendDocumentWithAttachment(
+                    toEmails = uniqueRecipients,
+                    documentType = "Prevoznica",
+                    documentNumber = saved.brojPrevoznice,
+                    porucilac = saved.primalac,
+                    pdfBytes = pdfBytes
+                )
+            }
+        } catch (e: Exception) {
+            log.error("Failed to send prevoznica email on signature: {}", e.message)
+        }
+
         return PrevoznicaDetailResponse(data = saved.toDto())
     }
 
@@ -135,6 +196,11 @@ class PrevoznicaService(
         val prevoznica = prevoznicaRepository.findById(id).orElseThrow {
             NoSuchElementException("Prevoznica sa id $id nije pronađena")
         }
+
+        if (prevoznica.status != PrevoznicaStatus.KREIRANA) {
+            throw IllegalStateException("Potpisana prevoznica se ne može obrisati")
+        }
+
         prevoznicaRepository.delete(prevoznica)
         return PrevoznicaDeleteResponse(id = id)
     }
@@ -179,6 +245,7 @@ class PrevoznicaService(
         otpremnicaBroj = otpremnica?.brojOtpremnice,
         potpisVozaca = !potpisVozaca.isNullOrBlank(),
         potpisPrimaoca = !potpisPrimaoca.isNullOrBlank(),
+        additionalEmails = additionalEmails?.split(",")?.map { it.trim() }?.filter { it.isNotBlank() } ?: emptyList(),
         status = status.name,
         createdBy = createdBy,
         createdAt = createdAt?.toString(),

@@ -125,24 +125,58 @@ class UserServiceImpl(
     }
 
     @Transactional
-    override fun updateCurrentUserSignature(email: String, signature: String?): UserResponseDTO {
+    override fun createCurrentUserSignature(email: String, signature: String): UserResponseDTO {
         val userDB = userDao.findByName(email)
+        if (userDB.signature != null) {
+            throw IllegalStateException("Potpis već postoji. Koristite ažuriranje potpisa.")
+        }
         userDB.signature = signature
         val updated = userDao.update(userDB)
 
-        if (!signature.isNullOrBlank()) {
-            val otpCount = otpremnicaRepository.backfillDriverSignature(updated.id!!, signature)
-            val prevCount = prevoznicaRepository.backfillDriverSignature(updated.id!!, signature)
-            if (otpCount > 0 || prevCount > 0) {
-                log.info("Backfilled driver signature for user ${updated.id}: $otpCount otpremnice, $prevCount prevoznice")
+        backfillDriverSignature(updated.id!!, signature)
+
+        return updated
+            .let(userMapper::mapToDTO)
+            .also {
+                log.info("Signature created for user with ID ${it.id}")
             }
+    }
+
+    @Transactional
+    override fun updateCurrentUserSignature(email: String, signature: String): UserResponseDTO {
+        val userDB = userDao.findByName(email)
+        if (userDB.signature == null) {
+            throw IllegalStateException("Potpis ne postoji. Prvo kreirajte potpis.")
         }
+        userDB.signature = signature
+        val updated = userDao.update(userDB)
+
+        backfillDriverSignature(updated.id!!, signature)
 
         return updated
             .let(userMapper::mapToDTO)
             .also {
                 log.info("Signature updated for user with ID ${it.id}")
             }
+    }
+
+    @Transactional
+    override fun deleteCurrentUserSignature(email: String): UserResponseDTO {
+        val userDB = userDao.findByName(email)
+        userDB.signature = null
+        return userDao.update(userDB)
+            .let(userMapper::mapToDTO)
+            .also {
+                log.info("Signature deleted for user with ID ${it.id}")
+            }
+    }
+
+    private fun backfillDriverSignature(userId: Long, signature: String) {
+        val otpCount = otpremnicaRepository.backfillDriverSignature(userId, signature)
+        val prevCount = prevoznicaRepository.backfillDriverSignature(userId, signature)
+        if (otpCount > 0 || prevCount > 0) {
+            log.info("Backfilled driver signature for user $userId: $otpCount otpremnice, $prevCount prevoznice")
+        }
     }
 
     private fun relinkDocumentsToDriver(userId: Long, oldDriverName: String?, newDriverName: String?) {

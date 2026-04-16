@@ -81,6 +81,9 @@ class Otpremnica(
     @JoinColumn(name = "merenje_generated_file_id")
     var merenjeGeneratedFile: ImportedFile? = null,
 
+    @Column(name = "additional_emails", columnDefinition = "TEXT")
+    var additionalEmails: String? = null,
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     var status: OtpremnicaStatus = OtpremnicaStatus.KREIRANA,

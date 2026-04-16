@@ -49,6 +49,9 @@ class Faktura(
 
     var napomena: String? = null,
 
+    @Column(name = "additional_emails", columnDefinition = "TEXT")
+    var additionalEmails: String? = null,
+
     @Column(name = "created_by")
     var createdBy: String? = null,
 

@@ -51,6 +51,16 @@ class PrevoznicaController(
         return prevoznicaService.createPrevoznica(request, createdBy = authentication?.name)
     }
 
+    @PutMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
+    fun updatePrevoznica(
+        @PathVariable id: Long,
+        @Valid @RequestBody request: UpdatePrevoznicaRequest,
+        authentication: Authentication?
+    ): PrevoznicaDetailResponse {
+        return prevoznicaService.updatePrevoznica(id, request, updatedBy = authentication?.name)
+    }
+
     @PatchMapping("/{id}/signature")
     fun updatePrimalacSignature(
         @PathVariable id: Long,

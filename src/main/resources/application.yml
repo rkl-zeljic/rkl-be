@@ -22,6 +22,8 @@ spring:
             enable: true
 
 rkl:
+  mail:
+    admin-email: ${RKL_ADMIN_EMAIL:zeljicvidoje@gmail.com}
   allowed-extensions:
     - ".xls"
     - ".xlsx"

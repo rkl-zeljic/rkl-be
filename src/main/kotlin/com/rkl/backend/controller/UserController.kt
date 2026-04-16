@@ -55,12 +55,25 @@ class UserController(
         return userService.getCurrentUser(authentication.name)
     }
 
+    @PostMapping("/me/signature")
+    fun createMySignature(
+        authentication: Authentication,
+        @RequestBody request: Map<String, String>
+    ): UserResponseDTO {
+        return userService.createCurrentUserSignature(authentication.name, request["signature"]!!)
+    }
+
     @PatchMapping("/me/signature")
     fun updateMySignature(
         authentication: Authentication,
-        @RequestBody request: Map<String, String?>
+        @RequestBody request: Map<String, String>
     ): UserResponseDTO {
-        return userService.updateCurrentUserSignature(authentication.name, request["signature"])
+        return userService.updateCurrentUserSignature(authentication.name, request["signature"]!!)
+    }
+
+    @DeleteMapping("/me/signature")
+    fun deleteMySignature(authentication: Authentication): UserResponseDTO {
+        return userService.deleteCurrentUserSignature(authentication.name)
     }
 
     @PostMapping
