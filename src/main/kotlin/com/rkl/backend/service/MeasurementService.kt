@@ -24,6 +24,7 @@ class MeasurementService(
     private val repository: MerenjeRepository,
     private val importedFileRepository: ImportedFileRepository,
     private val userRepository: com.rkl.backend.repository.UserRepository,
+    private val prevoznicaRepository: com.rkl.backend.repository.PrevoznicaRepository,
     private val excelParsingService: ExcelParsingService,
     private val azureBlobStorageService: AzureBlobStorageService,
     private val appProperties: AppProperties,
@@ -177,7 +178,7 @@ class MeasurementService(
         if (!filter.vozac.isNullOrBlank()) filtersApplied["vozac"] = filter.vozac
 
         return MeasurementsResponse(
-            data = result.content.map { it.toDto() },
+            data = toDtos(result.content),
             pagination = PaginationMeta(
                 totalCount = result.totalElements,
                 page = filter.page,
@@ -223,7 +224,7 @@ class MeasurementService(
         if (!filter.primalac.isNullOrBlank()) filtersApplied["primalac"] = filter.primalac
 
         return MeasurementsResponse(
-            data = result.content.map { it.toDto() },
+            data = toDtos(result.content),
             pagination = PaginationMeta(
                 totalCount = result.totalElements,
                 page = filter.page,
@@ -383,30 +384,45 @@ class MeasurementService(
         return com.rkl.backend.util.TextUtils.normalizeRegistration(value)
     }
 
-    private fun Merenje.toDto(): MeasurementDto = MeasurementDto(
-        id = id,
-        izvorFajl = importedFile?.originalFilename,
-        importedFileId = importedFile?.id,
-        otpremnicaId = otpremnica?.id,
-        otpremnicaBroj = otpremnica?.brojOtpremnice,
-        hasOtpremnica = otpremnica != null,
-        isValidated = importedFile != null,
-        izvor = izvor,
-        datumIzvestaja = datumIzvestaja?.toString(),
-        merniListBr = merniListBr,
-        posiljalac = posiljalac,
-        porucilac = porucilac,
-        primalac = primalac,
-        roba = roba,
-        bruto = bruto,
-        tara = tara,
-        neto = neto,
-        prevoznik = prevoznik,
-        registracija = registracija,
-        vozac = vozac,
-        mesto = mesto,
-        potpis = potpis,
-        createdAt = createdAt?.toString(),
-        updatedAt = updatedAt?.toString()
-    )
+    private fun toDtos(merenja: List<Merenje>): List<MeasurementDto> {
+        val otpremnicaIds = merenja.mapNotNull { it.otpremnica?.id }.toSet()
+        val prevozniceByOtpremnica = if (otpremnicaIds.isNotEmpty()) {
+            prevoznicaRepository.findByOtpremnicaIdIn(otpremnicaIds)
+                .associateBy { it.otpremnica!!.id!! }
+        } else {
+            emptyMap()
+        }
+
+        return merenja.map { m ->
+            val prevoznica = m.otpremnica?.id?.let { prevozniceByOtpremnica[it] }
+            MeasurementDto(
+                id = m.id,
+                izvorFajl = m.importedFile?.originalFilename,
+                importedFileId = m.importedFile?.id,
+                otpremnicaId = m.otpremnica?.id,
+                otpremnicaBroj = m.otpremnica?.brojOtpremnice,
+                hasOtpremnica = m.otpremnica != null,
+                prevoznicaId = prevoznica?.id,
+                prevoznicaBroj = prevoznica?.brojPrevoznice,
+                isValidated = m.importedFile != null,
+                izvor = m.izvor,
+                datumIzvestaja = m.datumIzvestaja?.toString(),
+                merniListBr = m.merniListBr,
+                posiljalac = m.posiljalac,
+                porucilac = m.porucilac,
+                primalac = m.primalac,
+                roba = m.roba,
+                bruto = m.bruto,
+                tara = m.tara,
+                neto = m.neto,
+                prevoznik = m.prevoznik,
+                registracija = m.registracija,
+                vozac = m.vozac,
+                mesto = m.mesto,
+                potpis = m.potpis,
+                createdAt = m.createdAt?.toString(),
+                updatedAt = m.updatedAt?.toString()
+            )
+        }
+    }
 }

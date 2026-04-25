@@ -13,12 +13,17 @@ interface PrevoznicaRepository : JpaRepository<Prevoznica, Long> {
 
     fun findByOtpremnicaId(otpremnicaId: Long): Prevoznica?
 
+    fun findByOtpremnicaIdIn(otpremnicaIds: Collection<Long>): List<Prevoznica>
+
     fun findAllByOrderByCreatedAtDesc(): List<Prevoznica>
 
     fun findByVozacUserOrderByCreatedAtDesc(vozacUser: RklUser): List<Prevoznica>
 
     @Query("SELECT COALESCE(MAX(p.id), 0) FROM Prevoznica p")
     fun findMaxId(): Long
+
+    @Query("SELECT p.additionalEmails FROM Prevoznica p WHERE p.additionalEmails IS NOT NULL AND p.additionalEmails <> ''")
+    fun findAllAdditionalEmailsRaw(): List<String>
 
     @Query("SELECT DISTINCT p.mestoIstovara FROM Prevoznica p WHERE p.mestoIstovara IS NOT NULL AND p.mestoIstovara <> '' ORDER BY p.mestoIstovara")
     fun findDistinctMestoIstovara(): List<String>

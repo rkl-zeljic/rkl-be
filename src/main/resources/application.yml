@@ -23,7 +23,7 @@ spring:
 
 rkl:
   mail:
-    admin-email: ${RKL_ADMIN_EMAIL:zeljicvidoje@gmail.com}
+    admin-email: ${RKL_ADMIN_EMAIL:izvestajrkl@gmail.com}
   allowed-extensions:
     - ".xls"
     - ".xlsx"

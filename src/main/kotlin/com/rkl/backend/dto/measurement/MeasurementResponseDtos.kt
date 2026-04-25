@@ -20,6 +20,8 @@ data class MeasurementDto(
     val otpremnicaId: Long? = null,
     val otpremnicaBroj: String? = null,
     val hasOtpremnica: Boolean = false,
+    val prevoznicaId: Long? = null,
+    val prevoznicaBroj: String? = null,
     val isValidated: Boolean = false,
     val izvor: String? = null,
     val datumIzvestaja: String?,

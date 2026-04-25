@@ -1,5 +1,6 @@
 package com.rkl.backend.service
 
+import com.rkl.backend.config.RklConfig
 import com.rkl.backend.dto.common.PaginationMeta
 import com.rkl.backend.dto.faktura.*
 import com.rkl.backend.entity.Faktura
@@ -20,7 +21,8 @@ class FakturaService(
     private val merenjeRepository: MerenjeRepository,
     private val emailService: EmailService,
     private val fakturaExcelService: FakturaExcelService,
-    private val fakturaPdfService: FakturaPdfService
+    private val fakturaPdfService: FakturaPdfService,
+    private val mailConfig: RklConfig.Mail
 ) {
 
     companion object {
@@ -126,8 +128,10 @@ class FakturaService(
             )
         }
 
+        val allEmails = (request.emails + mailConfig.adminEmail).distinct()
+
         emailService.sendFakturaWithAttachment(
-            toEmails = request.emails,
+            toEmails = allEmails,
             brojFakture = faktura.brojFakture,
             porucilac = faktura.porucilac,
             fileBytes = fileBytes,
@@ -135,7 +139,7 @@ class FakturaService(
             mimeType = mimeType
         )
 
-        return SendFakturaEmailResponse(message = "Email poslat na ${request.emails.joinToString(", ")}")
+        return SendFakturaEmailResponse(message = "Email poslat na ${allEmails.joinToString(", ")}")
     }
 
     @Transactional

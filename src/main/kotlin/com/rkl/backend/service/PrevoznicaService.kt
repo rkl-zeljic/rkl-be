@@ -1,5 +1,6 @@
 package com.rkl.backend.service
 
+import com.rkl.backend.config.RklConfig
 import com.rkl.backend.dto.prevoznica.*
 import com.rkl.backend.entity.Prevoznica
 import com.rkl.backend.entity.PrevoznicaStatus
@@ -21,7 +22,8 @@ class PrevoznicaService(
     private val primalacRepository: PrimalacRepository,
     private val prevoznicaPdfService: PrevoznicaPdfService,
     private val emailService: EmailService,
-    private val merenjeFromOtpremnicaService: MerenjeFromOtpremnicaService
+    private val merenjeFromOtpremnicaService: MerenjeFromOtpremnicaService,
+    private val mailConfig: RklConfig.Mail
 ) {
 
     private val log = LoggerFactory.getLogger(PrevoznicaService::class.java)
@@ -172,6 +174,7 @@ class PrevoznicaService(
         // Send PDF to all relevant parties on signature
         try {
             val recipients = mutableListOf<String>()
+            recipients.add(mailConfig.adminEmail)
             // Firma koja prevozi
             val prevozilacEntity = primalacRepository.findByNaziv(saved.prevozilac)
             if (prevozilacEntity?.email != null) {
