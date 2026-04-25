@@ -28,23 +28,32 @@ class MerenjeFromOtpremnicaService(
     @Transactional
     fun createMerenjeFromOtpremnica(otpremnica: Otpremnica): Merenje? {
         val merniListBr = otpremnica.merniListBr ?: return null
+        val kupacId = otpremnica.kupac?.id
+            ?: throw IllegalStateException("Otpremnica ${otpremnica.brojOtpremnice} nema povezanog kupca")
 
         val prevoznica = otpremnica.id?.let { prevoznicaRepository.findByOtpremnicaId(it) }
 
-        // Check if merenje already exists for this datum+merniListBr
-        val existingOpt = merenjeRepository.findByDatumIzvestajaAndMerniListBr(otpremnica.datum, merniListBr)
-
-        val merenje = if (existingOpt.isPresent) {
-            val existing = existingOpt.get()
-            // If owned by a different otpremnica, error
+        // 1) Existing merenje for THIS kupac with same merni list
+        val ownedOpt = merenjeRepository.findByKupacIdAndMerniListBr(kupacId, merniListBr)
+        if (ownedOpt.isPresent) {
+            val existing = ownedOpt.get()
             if (existing.otpremnica != null && existing.otpremnica?.id != otpremnica.id) {
                 throw IllegalArgumentException(
-                    "Merni list br $merniListBr za datum ${otpremnica.datum} je već zauzet od otpremnice ${existing.otpremnica?.brojOtpremnice}"
+                    "Merni list br $merniListBr za kupca ${otpremnica.kupac?.naziv} je već zauzet od otpremnice ${existing.otpremnica?.brojOtpremnice}"
                 )
             }
-            // Adopt existing import merenje or update own
             applyOtpremnicaToMerenje(existing, otpremnica, prevoznica)
-            existing
+            val saved = merenjeRepository.save(existing)
+            log.info("Updated owned merenje {} from otpremnica {}", saved.id, otpremnica.brojOtpremnice)
+            return saved
+        }
+
+        // 2) Try to claim an unassigned (vaga raw) merenje matching (datum, merniListBr)
+        val unassignedOpt = merenjeRepository.findUnassignedByDatumAndMerni(otpremnica.datum, merniListBr)
+        val merenje = if (unassignedOpt.isPresent) {
+            val claimed = unassignedOpt.get()
+            applyOtpremnicaToMerenje(claimed, otpremnica, prevoznica)
+            claimed
         } else {
             val newMerenje = Merenje()
             applyOtpremnicaToMerenje(newMerenje, otpremnica, prevoznica)
@@ -52,13 +61,15 @@ class MerenjeFromOtpremnicaService(
         }
 
         val saved = merenjeRepository.save(merenje)
-        log.info("Created/updated merenje {} from otpremnica {}", saved.id, otpremnica.brojOtpremnice)
+        log.info("Created/claimed merenje {} from otpremnica {}", saved.id, otpremnica.brojOtpremnice)
         return saved
     }
 
     @Transactional
     fun updateMerenjeFromOtpremnica(otpremnica: Otpremnica) {
         val merniListBr = otpremnica.merniListBr ?: return
+        val kupacId = otpremnica.kupac?.id
+            ?: throw IllegalStateException("Otpremnica ${otpremnica.brojOtpremnice} nema povezanog kupca")
 
         val prevoznica = otpremnica.id?.let { prevoznicaRepository.findByOtpremnicaId(it) }
 
@@ -66,12 +77,12 @@ class MerenjeFromOtpremnicaService(
         val merenje = otpremnica.id?.let { merenjeRepository.findByOtpremnicaId(it) }
 
         if (merenje != null) {
-            // Check if datum/merniListBr changed and new combo is unique
-            if (merenje.datumIzvestaja != otpremnica.datum || merenje.merniListBr != merniListBr) {
-                val conflictOpt = merenjeRepository.findByDatumIzvestajaAndMerniListBr(otpremnica.datum, merniListBr)
+            // Check per-kupac uniqueness if kupac/merniListBr combination changed
+            if (merenje.kupac?.id != kupacId || merenje.merniListBr != merniListBr) {
+                val conflictOpt = merenjeRepository.findByKupacIdAndMerniListBr(kupacId, merniListBr)
                 if (conflictOpt.isPresent && conflictOpt.get().id != merenje.id) {
                     throw IllegalArgumentException(
-                        "Merni list br $merniListBr za datum ${otpremnica.datum} je već zauzet"
+                        "Merni list br $merniListBr za kupca ${otpremnica.kupac?.naziv} je već zauzet"
                     )
                 }
             }
@@ -110,7 +121,11 @@ class MerenjeFromOtpremnicaService(
     private fun applyOtpremnicaToMerenje(merenje: Merenje, otpremnica: Otpremnica, prevoznica: Prevoznica?) {
         merenje.datumIzvestaja = otpremnica.datum
         merenje.merniListBr = otpremnica.merniListBr!!
+        merenje.kupac = otpremnica.kupac
         merenje.porucilac = labelService.resolveValue("porucilac", otpremnica.porucilac)
+        if (otpremnica.primalac.isNotBlank()) {
+            merenje.primalac = labelService.resolveValue("primalac", otpremnica.primalac)
+        }
         merenje.prevoznik = labelService.resolveValue("prevoznik", otpremnica.prevoznik)
         merenje.registracija = labelService.resolveValue("registracija",
             com.rkl.backend.util.TextUtils.normalizeRegistration(otpremnica.registracija))

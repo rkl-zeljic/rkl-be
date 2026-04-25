@@ -2,12 +2,15 @@ package com.rkl.backend.service
 
 import com.rkl.backend.config.RklConfig
 import com.rkl.backend.dto.otpremnica.*
+import com.rkl.backend.entity.Kupac
 import com.rkl.backend.entity.Otpremnica
 import com.rkl.backend.entity.OtpremnicaStatus
 import com.rkl.backend.entity.PrevoznicaStatus
+import com.rkl.backend.repository.KupacRepository
 import com.rkl.backend.repository.MerenjeRepository
 import com.rkl.backend.repository.OtpremnicaRepository
 import com.rkl.backend.repository.PrevoznicaRepository
+import com.rkl.backend.repository.PrevoznikRepository
 import com.rkl.backend.repository.PrimalacRepository
 import com.rkl.backend.repository.UserRepository
 import org.slf4j.LoggerFactory
@@ -20,7 +23,9 @@ class OtpremnicaService(
     private val prevoznicaRepository: PrevoznicaRepository,
     private val merenjeRepository: MerenjeRepository,
     private val userRepository: UserRepository,
+    private val kupacRepository: KupacRepository,
     private val primalacRepository: PrimalacRepository,
+    private val prevoznikRepository: PrevoznikRepository,
     private val otpremnicaPdfService: OtpremnicaPdfService,
     private val emailService: EmailService,
     private val mailConfig: RklConfig.Mail,
@@ -62,16 +67,26 @@ class OtpremnicaService(
             NoSuchElementException("Vozač sa id ${request.vozacUserId} nije pronađen")
         }
 
-        // Validate uniqueness of custom number
-        val existing = otpremnicaRepository.findByBrojOtpremnice(request.brojOtpremnice)
+        val kupac = resolveKupac(request.porucilacId, request.porucilac)
+
+        // Validate per-kupac uniqueness of broj otpremnice
+        val existing = otpremnicaRepository.findByKupacIdAndBrojOtpremnice(kupac.id!!, request.brojOtpremnice)
         if (existing != null) {
-            throw IllegalArgumentException("Otpremnica sa brojem ${request.brojOtpremnice} već postoji")
+            throw IllegalArgumentException(
+                "Otpremnica sa brojem ${request.brojOtpremnice} već postoji za kupca ${kupac.naziv}"
+            )
         }
+
+        // Broj otpremnice i merni list su isti podatak — derivišemo merniListBr iz broja
+        // kada postoji merenje; ignorišemo klijentski poslat merniListBr.
+        val merniListBr = deriveMerniListBr(request.brojOtpremnice, request.bezMerenja)
 
         val otpremnica = Otpremnica(
             brojOtpremnice = request.brojOtpremnice,
             datum = request.datum,
-            porucilac = request.porucilac,
+            kupac = kupac,
+            porucilac = kupac.naziv,
+            primalac = request.primalac.ifBlank { kupac.naziv },
             prevoznik = request.prevoznik,
             registracija = request.registracija,
             nazivRobe = request.nazivRobe,
@@ -79,13 +94,14 @@ class OtpremnicaService(
             bruto = request.bruto,
             tara = request.tara,
             neto = request.neto,
-            merniListBr = request.merniListBr,
+            merniListBr = merniListBr,
             vozacUser = vozacUser,
             vozacIme = vozacUser.driverName ?: vozacUser.email ?: vozacUser.username ?: "",
             potpisVozaca = vozacUser.signature,
             potpisIzdavaoca = DEFAULT_IZDAVALAC_SIGNATURE,
             bezMerenja = request.bezMerenja,
             additionalEmails = request.additionalEmails.takeIf { it.isNotEmpty() }?.joinToString(","),
+            posaljiPrevozniku = request.posaljiPrevozniku,
             status = OtpremnicaStatus.KREIRANA,
             createdBy = createdBy
         )
@@ -120,17 +136,24 @@ class OtpremnicaService(
             NoSuchElementException("Vozač sa id ${request.vozacUserId} nije pronađen")
         }
 
-        // Validate uniqueness of number if changed
-        if (request.brojOtpremnice != otpremnica.brojOtpremnice) {
-            val existing = otpremnicaRepository.findByBrojOtpremnice(request.brojOtpremnice)
-            if (existing != null) {
-                throw IllegalArgumentException("Otpremnica sa brojem ${request.brojOtpremnice} već postoji")
+        val kupac = resolveKupac(request.porucilacId, request.porucilac)
+
+        // Validate per-kupac uniqueness of number if kupac or broj changed
+        val kupacChanged = otpremnica.kupac?.id != kupac.id
+        if (kupacChanged || request.brojOtpremnice != otpremnica.brojOtpremnice) {
+            val existing = otpremnicaRepository.findByKupacIdAndBrojOtpremnice(kupac.id!!, request.brojOtpremnice)
+            if (existing != null && existing.id != otpremnica.id) {
+                throw IllegalArgumentException(
+                    "Otpremnica sa brojem ${request.brojOtpremnice} već postoji za kupca ${kupac.naziv}"
+                )
             }
         }
 
         otpremnica.brojOtpremnice = request.brojOtpremnice
         otpremnica.datum = request.datum
-        otpremnica.porucilac = request.porucilac
+        otpremnica.kupac = kupac
+        otpremnica.porucilac = kupac.naziv
+        otpremnica.primalac = request.primalac.ifBlank { kupac.naziv }
         otpremnica.prevoznik = request.prevoznik
         otpremnica.registracija = request.registracija
         otpremnica.nazivRobe = request.nazivRobe
@@ -141,9 +164,10 @@ class OtpremnicaService(
         otpremnica.vozacUser = vozacUser
         otpremnica.vozacIme = vozacUser.driverName ?: vozacUser.email ?: vozacUser.username ?: ""
         otpremnica.potpisVozaca = vozacUser.signature
-        otpremnica.merniListBr = request.merniListBr
+        otpremnica.merniListBr = deriveMerniListBr(request.brojOtpremnice, request.bezMerenja)
         otpremnica.bezMerenja = request.bezMerenja
         otpremnica.additionalEmails = request.additionalEmails.takeIf { it.isNotEmpty() }?.joinToString(",")
+        otpremnica.posaljiPrevozniku = request.posaljiPrevozniku
 
         val saved = otpremnicaRepository.save(otpremnica)
 
@@ -155,7 +179,7 @@ class OtpremnicaService(
         // Cascade update to linked prevoznica (guaranteed KREIRANA at this point)
         if (linkedPrevoznica != null) {
             linkedPrevoznica.pratecaDokumenta = request.brojOtpremnice
-            linkedPrevoznica.primalac = request.porucilac
+            linkedPrevoznica.primalac = kupac.naziv
             linkedPrevoznica.prevozilac = request.prevoznik
             linkedPrevoznica.registracija = request.registracija
             linkedPrevoznica.vrstaRobe = request.nazivRobe
@@ -190,9 +214,19 @@ class OtpremnicaService(
         try {
             val recipients = mutableListOf<String>()
             recipients.add(mailConfig.adminEmail)
-            val primalac = primalacRepository.findByNaziv(saved.porucilac)
-            if (primalac?.email != null) {
-                recipients.add(primalac.email!!)
+            // Porucilac (customer) email — looked up in Primalac table by porucilac name
+            primalacRepository.findByNaziv(saved.porucilac)?.email?.let { recipients.add(it) }
+            // Primalac (recipient) email — if primalac differs from porucilac,
+            // lookup adds a different email; if same firma, the same email is added and
+            // recipients.distinct() below collapses the duplicate.
+            if (saved.primalac.isNotBlank() && saved.primalac != saved.porucilac) {
+                primalacRepository.findByNaziv(saved.primalac)?.email?.let { recipients.add(it) }
+            }
+            if (saved.posaljiPrevozniku) {
+                val prevoznikEntity = prevoznikRepository.findByNaziv(saved.prevoznik)
+                if (prevoznikEntity?.email != null) {
+                    recipients.add(prevoznikEntity.email!!)
+                }
             }
             saved.additionalEmails?.split(",")?.map { it.trim() }?.filter { it.isNotBlank() }
                 ?.let { recipients.addAll(it) }
@@ -240,13 +274,66 @@ class OtpremnicaService(
         return OtpremnicaDeleteResponse(id = id)
     }
 
+    @Transactional(readOnly = true)
+    fun getKnownAdditionalEmails(): List<String> {
+        val raw = otpremnicaRepository.findAllAdditionalEmailsRaw() +
+            prevoznicaRepository.findAllAdditionalEmailsRaw()
+        return raw.asSequence()
+            .flatMap { it.split(",").asSequence() }
+            .map { it.trim() }
+            .filter { it.isNotBlank() && it.contains("@") }
+            .distinct()
+            .sorted()
+            .toList()
+    }
+
+    private fun deriveMerniListBr(brojOtpremnice: String, bezMerenja: Boolean): Int? {
+        if (bezMerenja) return null
+        val parsed = brojOtpremnice.trim().toIntOrNull()
+        require(parsed != null && parsed > 0) {
+            "Broj otpremnice mora biti pozitivan ceo broj (isti kao merni list) kada nije 'Bez merenja'"
+        }
+        return parsed
+    }
+
+    /**
+     * Resolves the Kupac for an otpremnica request. Prefers porucilacId when provided;
+     * otherwise looks up by exact naziv. Throws if neither yields a match — kupac is required
+     * for per-kupac uniqueness of broj otpremnice.
+     */
+    private fun resolveKupac(porucilacId: Long?, porucilac: String): Kupac {
+        if (porucilacId != null) {
+            return kupacRepository.findById(porucilacId).orElseThrow {
+                NoSuchElementException("Kupac sa id $porucilacId nije pronađen")
+            }
+        }
+        val naziv = porucilac.trim()
+        require(naziv.isNotEmpty()) { "Poručilac (kupac) je obavezan" }
+        return kupacRepository.findByNaziv(naziv)
+            ?: throw IllegalArgumentException("Kupac sa nazivom \"$naziv\" nije pronađen u registru kupaca")
+    }
+
+    /**
+     * Next available broj otpremnice for a given kupac — used for FE pre-fill when user
+     * selects a customer in the create form. Returns max(broj) + 1.
+     */
+    @Transactional(readOnly = true)
+    fun getNextBrojForKupac(kupacId: Long): Int {
+        kupacRepository.findById(kupacId).orElseThrow {
+            NoSuchElementException("Kupac sa id $kupacId nije pronađen")
+        }
+        return otpremnicaRepository.findMaxBrojForKupac(kupacId) + 1
+    }
+
     private fun Otpremnica.toDto(): OtpremnicaDto {
         val linkedMerenje = id?.let { merenjeRepository.findByOtpremnicaId(it) }
         return OtpremnicaDto(
             id = id,
             brojOtpremnice = brojOtpremnice,
             datum = datum.toString(),
+            porucilacId = kupac?.id,
             porucilac = porucilac,
+            primalac = primalac,
             prevoznik = prevoznik,
             registracija = registracija,
             nazivRobe = nazivRobe,
@@ -265,6 +352,7 @@ class OtpremnicaService(
             bezMerenja = bezMerenja,
             merenjeGenerated = merenjeGeneratedFile != null,
             additionalEmails = additionalEmails?.split(",")?.map { it.trim() }?.filter { it.isNotBlank() } ?: emptyList(),
+            posaljiPrevozniku = posaljiPrevozniku,
             status = status.name,
             createdBy = createdBy,
             createdAt = createdAt?.toString(),

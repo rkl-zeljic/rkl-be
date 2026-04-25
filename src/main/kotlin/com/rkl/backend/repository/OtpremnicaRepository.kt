@@ -21,7 +21,27 @@ interface OtpremnicaRepository : JpaRepository<Otpremnica, Long> {
 
     fun findByBrojOtpremnice(brojOtpremnice: String): Otpremnica?
 
+    fun findByKupacIdAndBrojOtpremnice(kupacId: Long, brojOtpremnice: String): Otpremnica?
+
+    /**
+     * Returns the highest numeric value of broj_otpremnice for a given kupac.
+     * Non-numeric brojevi are ignored. NULL when kupac has no otpremnice yet.
+     */
+    @Query(
+        value = """
+            SELECT COALESCE(MAX(CAST(o.broj_otpremnice AS INTEGER)), 0)
+            FROM otpremnice o
+            WHERE o.porucilac_id = :kupacId
+              AND o.broj_otpremnice ~ '^[0-9]+${'$'}'
+        """,
+        nativeQuery = true
+    )
+    fun findMaxBrojForKupac(@Param("kupacId") kupacId: Long): Int
+
     fun findByDatumAndBezMerenjaTrue(datum: LocalDate): List<Otpremnica>
+
+    @Query("SELECT o.additionalEmails FROM Otpremnica o WHERE o.additionalEmails IS NOT NULL AND o.additionalEmails <> ''")
+    fun findAllAdditionalEmailsRaw(): List<String>
 
     @Modifying
     @Query("UPDATE Otpremnica o SET o.vozacUser = NULL WHERE o.vozacUser.id = :userId")

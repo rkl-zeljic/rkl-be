@@ -8,13 +8,14 @@ import java.time.LocalDateTime
 @Table(
     name = "merenja",
     uniqueConstraints = [
-        UniqueConstraint(name = "ux_merenja_datum_merni", columnNames = ["datum_izvestaja", "merni_list_br"])
+        UniqueConstraint(name = "ux_merenja_porucilac_merni", columnNames = ["porucilac_id", "merni_list_br"])
     ],
     indexes = [
         Index(name = "ix_merenja_datum", columnList = "datum_izvestaja"),
         Index(name = "ix_merenja_roba", columnList = "roba"),
         Index(name = "ix_merenja_registracija", columnList = "registracija"),
-        Index(name = "ix_merenja_vozac_user", columnList = "vozac_user_id")
+        Index(name = "ix_merenja_vozac_user", columnList = "vozac_user_id"),
+        Index(name = "ix_merenja_porucilac_id", columnList = "porucilac_id")
     ]
 )
 class Merenje(
@@ -30,6 +31,10 @@ class Merenje(
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "otpremnica_id")
     var otpremnica: Otpremnica? = null,
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "porucilac_id")
+    var kupac: Kupac? = null,
 
     @Column(name = "izvor")
     var izvor: String? = null,

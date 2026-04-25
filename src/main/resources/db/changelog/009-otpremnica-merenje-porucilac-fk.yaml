@@ -1,0 +1,71 @@
+databaseChangeLog:
+  # Add porucilac_id FK on otpremnice table (nullable for backfill)
+  - changeSet:
+      id: 009-1-add-porucilac-id-to-otpremnice
+      author: rkl
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - columnExists:
+                tableName: otpremnice
+                columnName: porucilac_id
+      changes:
+        - addColumn:
+            tableName: otpremnice
+            columns:
+              - column:
+                  name: porucilac_id
+                  type: BIGINT
+                  constraints:
+                    nullable: true
+                    foreignKeyName: fk_otpremnice_porucilac
+                    references: kupci(id)
+
+  # Add porucilac_id FK on merenja table (nullable — vaga raw imports have no kupac)
+  - changeSet:
+      id: 009-2-add-porucilac-id-to-merenja
+      author: rkl
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - columnExists:
+                tableName: merenja
+                columnName: porucilac_id
+      changes:
+        - addColumn:
+            tableName: merenja
+            columns:
+              - column:
+                  name: porucilac_id
+                  type: BIGINT
+                  constraints:
+                    nullable: true
+                    foreignKeyName: fk_merenja_porucilac
+                    references: kupci(id)
+
+  # Indexes for FK lookups
+  - changeSet:
+      id: 009-3-add-porucilac-id-indexes
+      author: rkl
+      preConditions:
+        - onFail: MARK_RAN
+        - and:
+            - not:
+                - indexExists:
+                    indexName: ix_otpremnice_porucilac_id
+            - not:
+                - indexExists:
+                    indexName: ix_merenja_porucilac_id
+      changes:
+        - createIndex:
+            tableName: otpremnice
+            indexName: ix_otpremnice_porucilac_id
+            columns:
+              - column:
+                  name: porucilac_id
+        - createIndex:
+            tableName: merenja
+            indexName: ix_merenja_porucilac_id
+            columns:
+              - column:
+                  name: porucilac_id

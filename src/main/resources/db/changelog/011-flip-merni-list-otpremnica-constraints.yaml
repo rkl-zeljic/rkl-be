@@ -1,0 +1,75 @@
+databaseChangeLog:
+  # Make otpremnice.porucilac_id NOT NULL after backfill.
+  # If any otpremnica still has NULL porucilac_id at this point, the migration fails loudly
+  # which is the correct behavior — admin should check backfill log and fix data manually.
+  - changeSet:
+      id: 011-1-otpremnice-porucilac-id-not-null
+      author: rkl
+      preConditions:
+        - onFail: HALT
+        - sqlCheck:
+            expectedResult: '0'
+            sql: SELECT COUNT(*) FROM otpremnice WHERE porucilac_id IS NULL
+      changes:
+        - addNotNullConstraint:
+            tableName: otpremnice
+            columnName: porucilac_id
+            columnDataType: BIGINT
+
+  # Drop old global unique constraint on broj_otpremnice
+  - changeSet:
+      id: 011-2-drop-otpremnice-broj-unique
+      author: rkl
+      changes:
+        - dropUniqueConstraint:
+            tableName: otpremnice
+            constraintName: ux_otpremnice_broj
+
+  # Add new per-kupac unique constraint on (porucilac_id, broj_otpremnice)
+  - changeSet:
+      id: 011-3-add-otpremnice-porucilac-broj-unique
+      author: rkl
+      changes:
+        - addUniqueConstraint:
+            tableName: otpremnice
+            columnNames: porucilac_id, broj_otpremnice
+            constraintName: ux_otpremnice_porucilac_broj
+
+  # Drop old per-day unique constraint on merenja (datum, merni_list_br).
+  # Per-kupac uniqueness will be enforced by ux_merenja_porucilac_merni below;
+  # vaga raw imports (porucilac_id IS NULL) keep their per-day dedup via a partial index.
+  - changeSet:
+      id: 011-4-drop-merenja-datum-merni-unique
+      author: rkl
+      changes:
+        - dropUniqueConstraint:
+            tableName: merenja
+            constraintName: ux_merenja_datum_merni
+
+  # Add per-kupac unique constraint on (porucilac_id, merni_list_br).
+  # Postgres treats NULLs as distinct, so multiple NULL-porucilac (vaga raw) merenja
+  # are allowed by this constraint.
+  - changeSet:
+      id: 011-5-add-merenja-porucilac-merni-unique
+      author: rkl
+      changes:
+        - addUniqueConstraint:
+            tableName: merenja
+            columnNames: porucilac_id, merni_list_br
+            constraintName: ux_merenja_porucilac_merni
+
+  # Partial unique index for vaga raw imports: enforce (datum, merni_list_br) uniqueness
+  # only for merenja where porucilac_id IS NULL. Preserves the existing vaga dedup
+  # behavior used by Excel import without blocking per-kupac scenarios.
+  - changeSet:
+      id: 011-6-add-merenja-vaga-dedup-partial-index
+      author: rkl
+      changes:
+        - sql:
+            splitStatements: false
+            sql: |
+              CREATE UNIQUE INDEX IF NOT EXISTS ux_merenja_vaga_dedup
+              ON merenja (datum_izvestaja, merni_list_br)
+              WHERE porucilac_id IS NULL
+        - rollback:
+            sql: DROP INDEX IF EXISTS ux_merenja_vaga_dedup

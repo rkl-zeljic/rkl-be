@@ -13,3 +13,11 @@ databaseChangeLog:
       file: db/changelog/006-signature-requests.yaml
   - include:
       file: db/changelog/007-merenje-refactor.yaml
+  - include:
+      file: db/changelog/008-otpremnica-primalac-posalji-prevozniku.yaml
+  - include:
+      file: db/changelog/009-otpremnica-merenje-porucilac-fk.yaml
+  - include:
+      file: db/changelog/010-backfill-porucilac-id.yaml
+  - include:
+      file: db/changelog/011-flip-merni-list-otpremnica-constraints.yaml

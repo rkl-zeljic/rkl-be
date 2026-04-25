@@ -9,7 +9,9 @@ data class CreateOtpremnicaRequest(
     @field:DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
     val datum: LocalDate,
 
+    val porucilacId: Long? = null,
     val porucilac: String,
+    val primalac: String,
     val prevoznik: String,
     val registracija: String,
 
@@ -22,7 +24,8 @@ data class CreateOtpremnicaRequest(
     val merniListBr: Int? = null,
     val vozacUserId: Long,
     val bezMerenja: Boolean = false,
-    val additionalEmails: List<String> = emptyList()
+    val additionalEmails: List<String> = emptyList(),
+    val posaljiPrevozniku: Boolean = true
 )
 
 data class UpdateOtpremnicaRequest(
@@ -31,7 +34,9 @@ data class UpdateOtpremnicaRequest(
     @field:DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
     val datum: LocalDate,
 
+    val porucilacId: Long? = null,
     val porucilac: String,
+    val primalac: String,
     val prevoznik: String,
     val registracija: String,
 
@@ -44,7 +49,8 @@ data class UpdateOtpremnicaRequest(
     val merniListBr: Int? = null,
     val vozacUserId: Long,
     val bezMerenja: Boolean = false,
-    val additionalEmails: List<String> = emptyList()
+    val additionalEmails: List<String> = emptyList(),
+    val posaljiPrevozniku: Boolean = true
 )
 
 data class UpdateOtpremnicaSignatureRequest(
@@ -55,7 +61,9 @@ data class OtpremnicaDto(
     val id: Long?,
     val brojOtpremnice: String,
     val datum: String,
+    val porucilacId: Long? = null,
     val porucilac: String,
+    val primalac: String,
     val prevoznik: String,
     val registracija: String,
     val nazivRobe: String,
@@ -74,6 +82,7 @@ data class OtpremnicaDto(
     val bezMerenja: Boolean,
     val merenjeGenerated: Boolean,
     val additionalEmails: List<String> = emptyList(),
+    val posaljiPrevozniku: Boolean = true,
     val status: String,
     val createdBy: String?,
     val createdAt: String?,
@@ -100,4 +109,9 @@ data class GenerateMerenjaResponse(
     val processedCount: Int,
     val filename: String,
     val importedFileId: Long?
+)
+
+data class NextBrojResponse(
+    val status: String = "success",
+    val data: Int
 )

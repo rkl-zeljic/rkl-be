@@ -30,6 +30,12 @@ interface MerenjeRepository : JpaRepository<Merenje, Long>, JpaSpecificationExec
 
     fun findByDatumIzvestajaAndMerniListBr(datumIzvestaja: LocalDate, merniListBr: Int): Optional<Merenje>
 
+    fun findByKupacIdAndMerniListBr(kupacId: Long, merniListBr: Int): Optional<Merenje>
+
+    /** Vaga raw merenja: kupac NULL, matched per (datum, merniListBr) for legacy import dedup. */
+    @Query("SELECT m FROM Merenje m WHERE m.kupac IS NULL AND m.datumIzvestaja = :datum AND m.merniListBr = :merniListBr")
+    fun findUnassignedByDatumAndMerni(@Param("datum") datum: LocalDate, @Param("merniListBr") merniListBr: Int): Optional<Merenje>
+
     fun findByOtpremnicaId(otpremnicaId: Long): Merenje?
 
     fun deleteByOtpremnicaId(otpremnicaId: Long)

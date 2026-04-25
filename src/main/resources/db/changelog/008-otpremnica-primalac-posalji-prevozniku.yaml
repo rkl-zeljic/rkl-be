@@ -1,0 +1,47 @@
+databaseChangeLog:
+  - changeSet:
+      id: 008-1-add-primalac-to-otpremnice
+      author: rkl
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - columnExists:
+                tableName: otpremnice
+                columnName: primalac
+      changes:
+        - addColumn:
+            tableName: otpremnice
+            columns:
+              - column:
+                  name: primalac
+                  type: varchar(255)
+                  defaultValue: ''
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: 008-2-backfill-otpremnice-primalac
+      author: rkl
+      changes:
+        - sql:
+            sql: UPDATE otpremnice SET primalac = porucilac WHERE primalac IS NULL OR primalac = ''
+
+  - changeSet:
+      id: 008-3-add-posalji-prevozniku-to-otpremnice
+      author: rkl
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - columnExists:
+                tableName: otpremnice
+                columnName: posalji_prevozniku
+      changes:
+        - addColumn:
+            tableName: otpremnice
+            columns:
+              - column:
+                  name: posalji_prevozniku
+                  type: boolean
+                  defaultValueBoolean: true
+                  constraints:
+                    nullable: false

@@ -13,11 +13,12 @@ enum class OtpremnicaStatus {
 @Table(
     name = "otpremnice",
     uniqueConstraints = [
-        UniqueConstraint(name = "ux_otpremnice_broj", columnNames = ["broj_otpremnice"])
+        UniqueConstraint(name = "ux_otpremnice_porucilac_broj", columnNames = ["porucilac_id", "broj_otpremnice"])
     ],
     indexes = [
         Index(name = "ix_otpremnice_vozac_user", columnList = "vozac_user_id"),
-        Index(name = "ix_otpremnice_datum", columnList = "datum")
+        Index(name = "ix_otpremnice_datum", columnList = "datum"),
+        Index(name = "ix_otpremnice_porucilac_id", columnList = "porucilac_id")
     ]
 )
 class Otpremnica(
@@ -26,14 +27,21 @@ class Otpremnica(
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     var id: Long? = null,
 
-    @Column(name = "broj_otpremnice", nullable = false, unique = true)
+    @Column(name = "broj_otpremnice", nullable = false)
     var brojOtpremnice: String = "",
 
     @Column(nullable = false)
     var datum: LocalDate = LocalDate.now(),
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "porucilac_id", nullable = false)
+    var kupac: Kupac? = null,
+
     @Column(nullable = false)
     var porucilac: String = "",
+
+    @Column(nullable = false)
+    var primalac: String = "",
 
     @Column(nullable = false)
     var prevoznik: String = "",
@@ -86,6 +94,9 @@ class Otpremnica(
 
     @Column(name = "additional_emails", columnDefinition = "TEXT")
     var additionalEmails: String? = null,
+
+    @Column(name = "posalji_prevozniku", nullable = false)
+    var posaljiPrevozniku: Boolean = true,
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)

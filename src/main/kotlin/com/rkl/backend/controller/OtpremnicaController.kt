@@ -29,6 +29,21 @@ class OtpremnicaController(
         return otpremnicaService.getMyOtpremnice(authentication.name)
     }
 
+    @GetMapping("/known-additional-emails")
+    @PreAuthorize("hasRole('ADMIN')")
+    fun getKnownAdditionalEmails(): Map<String, Any> {
+        return mapOf(
+            "status" to "success",
+            "data" to otpremnicaService.getKnownAdditionalEmails()
+        )
+    }
+
+    @GetMapping("/next-broj")
+    @PreAuthorize("hasRole('ADMIN')")
+    fun getNextBroj(@RequestParam porucilacId: Long): NextBrojResponse {
+        return NextBrojResponse(data = otpremnicaService.getNextBrojForKupac(porucilacId))
+    }
+
     @GetMapping("/{id}")
     fun getOtpremnica(@PathVariable id: Long): OtpremnicaDetailResponse {
         return otpremnicaService.getOtpremnica(id)

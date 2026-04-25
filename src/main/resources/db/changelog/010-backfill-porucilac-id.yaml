@@ -1,0 +1,66 @@
+databaseChangeLog:
+  # Auto-create Kupci for distinct porucilac strings (from otpremnice + merenja)
+  # that don't already exist as kupac.naziv. Match is case-insensitive, trimmed.
+  - changeSet:
+      id: 010-1-autocreate-missing-kupci
+      author: rkl
+      changes:
+        - sql:
+            splitStatements: false
+            sql: |
+              INSERT INTO kupci (naziv, created_at)
+              SELECT DISTINCT TRIM(porucilac), NOW()
+              FROM (
+                SELECT porucilac FROM otpremnice WHERE porucilac IS NOT NULL AND TRIM(porucilac) <> ''
+                UNION
+                SELECT porucilac FROM merenja WHERE porucilac IS NOT NULL AND TRIM(porucilac) <> ''
+              ) src
+              WHERE NOT EXISTS (
+                SELECT 1 FROM kupci k WHERE LOWER(TRIM(k.naziv)) = LOWER(TRIM(src.porucilac))
+              )
+              AND TRIM(porucilac) <> ''
+
+  # Backfill otpremnice.porucilac_id by matching porucilac string to kupci.naziv
+  - changeSet:
+      id: 010-2-backfill-otpremnice-porucilac-id
+      author: rkl
+      changes:
+        - sql:
+            splitStatements: false
+            sql: |
+              UPDATE otpremnice o
+              SET porucilac_id = k.id
+              FROM kupci k
+              WHERE o.porucilac_id IS NULL
+                AND LOWER(TRIM(o.porucilac)) = LOWER(TRIM(k.naziv))
+
+  # Backfill merenja.porucilac_id:
+  # Prefer linking via the merenje's otpremnica (authoritative kupac).
+  # For merenja without otpremnica (vaga raw imports), match merenja.porucilac string to kupci.naziv.
+  - changeSet:
+      id: 010-3-backfill-merenja-porucilac-id-via-otpremnica
+      author: rkl
+      changes:
+        - sql:
+            splitStatements: false
+            sql: |
+              UPDATE merenja m
+              SET porucilac_id = o.porucilac_id
+              FROM otpremnice o
+              WHERE m.otpremnica_id = o.id
+                AND m.porucilac_id IS NULL
+                AND o.porucilac_id IS NOT NULL
+
+  - changeSet:
+      id: 010-4-backfill-merenja-porucilac-id-by-string
+      author: rkl
+      changes:
+        - sql:
+            splitStatements: false
+            sql: |
+              UPDATE merenja m
+              SET porucilac_id = k.id
+              FROM kupci k
+              WHERE m.porucilac_id IS NULL
+                AND m.porucilac IS NOT NULL
+                AND LOWER(TRIM(m.porucilac)) = LOWER(TRIM(k.naziv))
