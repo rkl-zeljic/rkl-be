@@ -50,6 +50,7 @@ rkl:
       - "/swagger-ui/**"
       - "/v3/api-docs/**"
       - "/api/v1/auth/**"
+      - "/api/v1/version"
     admins:
       - "uros.simeunovic.2002@gmail.com"
       - "zeljicvidoje@gmail.com"
