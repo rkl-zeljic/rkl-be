@@ -13,7 +13,15 @@ data class CreateFakturaRequest(
     @field:DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
     val datumDo: LocalDate,
 
-    val napomena: String? = null
+    val napomena: String? = null,
+
+    // Multi-value filteri — prazna lista znači "ne filtriraj po ovom polju"
+    val robaFilter: List<String> = emptyList(),
+    val prevoznikFilter: List<String> = emptyList(),
+    val primalacFilter: List<String> = emptyList(),
+    val posiljalacFilter: List<String> = emptyList(),
+    // true = u Excel/PDF idu labelovane (canonical) vrednosti; false = originalne (raw) iz uvoza
+    val useLabeledValues: Boolean = true
 )
 
 data class UpdateFakturaStatusRequest(
@@ -35,6 +43,11 @@ data class FakturaDto(
     val prevoznikList: List<String> = emptyList(),
     val primalacList: List<String> = emptyList(),
     val posiljalacList: List<String> = emptyList(),
+    val robaFilter: List<String> = emptyList(),
+    val prevoznikFilter: List<String> = emptyList(),
+    val primalacFilter: List<String> = emptyList(),
+    val posiljalacFilter: List<String> = emptyList(),
+    val useLabeledValues: Boolean = true,
     val createdAt: String?,
     val updatedAt: String?
 )

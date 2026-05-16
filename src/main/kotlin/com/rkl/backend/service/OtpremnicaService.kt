@@ -109,9 +109,8 @@ class OtpremnicaService(
         val saved = otpremnicaRepository.save(otpremnica)
 
         // Create merenje from otpremnica
-        if (saved.merniListBr != null) {
-            merenjeFromOtpremnicaService.createMerenjeFromOtpremnica(saved)
-        }
+        // Uvek pravi merenje — bezMerenja=true samo znači da neće biti mernog broja
+        merenjeFromOtpremnicaService.createMerenjeFromOtpremnica(saved)
 
         return OtpremnicaDetailResponse(data = saved.toDto())
     }
@@ -171,10 +170,8 @@ class OtpremnicaService(
 
         val saved = otpremnicaRepository.save(otpremnica)
 
-        // Update linked merenje
-        if (saved.merniListBr != null) {
-            merenjeFromOtpremnicaService.updateMerenjeFromOtpremnica(saved)
-        }
+        // Uvek ažuriraj merenje (bezMerenja-otpremnica takođe ima record)
+        merenjeFromOtpremnicaService.updateMerenjeFromOtpremnica(saved)
 
         // Cascade update to linked prevoznica (guaranteed KREIRANA at this point)
         if (linkedPrevoznica != null) {
@@ -214,24 +211,24 @@ class OtpremnicaService(
         try {
             val recipients = mutableListOf<String>()
             recipients.add(mailConfig.adminEmail)
-            // Porucilac (customer) email — looked up in Primalac table by porucilac name
-            primalacRepository.findByNaziv(saved.porucilac)?.email?.let { recipients.add(it) }
-            // Primalac (recipient) email — if primalac differs from porucilac,
-            // lookup adds a different email; if same firma, the same email is added and
-            // recipients.distinct() below collapses the duplicate.
+            // Kupac (poručilac) email — lookup u Kupac registru (PRE: traženo u Primalac,
+            // pa kupac nikad nije dobijao mail).
+            kupacRepository.findByNaziv(saved.porucilac)?.email?.takeIf { it.isNotBlank() }
+                ?.let { recipients.add(it) }
+            // Primalac email — ako je primalac različit od poručioca, traži u Primalac registru
             if (saved.primalac.isNotBlank() && saved.primalac != saved.porucilac) {
-                primalacRepository.findByNaziv(saved.primalac)?.email?.let { recipients.add(it) }
+                primalacRepository.findByNaziv(saved.primalac)?.email?.takeIf { it.isNotBlank() }
+                    ?.let { recipients.add(it) }
             }
             if (saved.posaljiPrevozniku) {
-                val prevoznikEntity = prevoznikRepository.findByNaziv(saved.prevoznik)
-                if (prevoznikEntity?.email != null) {
-                    recipients.add(prevoznikEntity.email!!)
-                }
+                prevoznikRepository.findByNaziv(saved.prevoznik)?.email?.takeIf { it.isNotBlank() }
+                    ?.let { recipients.add(it) }
             }
             saved.additionalEmails?.split(",")?.map { it.trim() }?.filter { it.isNotBlank() }
                 ?.let { recipients.addAll(it) }
 
             val uniqueRecipients = recipients.distinct()
+            log.info("Otpremnica {} signed — sending PDF to {}", saved.brojOtpremnice, uniqueRecipients)
             if (uniqueRecipients.isNotEmpty()) {
                 val pdfBytes = otpremnicaPdfService.generatePdf(saved.id!!)
                 emailService.sendDocumentWithAttachment(

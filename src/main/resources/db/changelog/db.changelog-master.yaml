@@ -21,3 +21,9 @@ databaseChangeLog:
       file: db/changelog/010-backfill-porucilac-id.yaml
   - include:
       file: db/changelog/011-flip-merni-list-otpremnica-constraints.yaml
+  - include:
+      file: db/changelog/012-merenja-raw-columns.yaml
+  - include:
+      file: db/changelog/013-faktura-filters.yaml
+  - include:
+      file: db/changelog/014-merenje-nullable-merni-prevoznica.yaml

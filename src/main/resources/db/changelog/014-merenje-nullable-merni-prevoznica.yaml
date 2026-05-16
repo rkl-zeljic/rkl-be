@@ -1,0 +1,38 @@
+databaseChangeLog:
+  - changeSet:
+      id: 014-1-make-merni-list-br-nullable
+      author: rkl
+      comment: >-
+        Merni list br postaje opcioni. Otpremnica sa bezMerenja=true i standalone
+        prevoznica (bez otpremnice) sada takođe kreiraju merenje, ali bez mernog
+        broja. Unique constraint (porucilac_id, merni_list_br) ostaje — Postgres
+        NULLS DISTINCT dozvoljava više NULL parova.
+      changes:
+        - dropNotNullConstraint:
+            tableName: merenja
+            columnName: merni_list_br
+            columnDataType: int
+
+  - changeSet:
+      id: 014-2-add-prevoznica-id-to-merenja
+      author: rkl
+      comment: >-
+        Standalone prevoznica (bez otpremnice) kreira jedan merenje record.
+        prevoznica_id FK omogućava lookup/update/delete prilikom edita prevoznice.
+      changes:
+        - addColumn:
+            tableName: merenja
+            columns:
+              - column:
+                  name: prevoznica_id
+                  type: bigint
+                  constraints:
+                    nullable: true
+                    foreignKeyName: fk_merenja_prevoznica
+                    references: prevoznice(id)
+        - createIndex:
+            tableName: merenja
+            indexName: ix_merenja_prevoznica
+            columns:
+              - column:
+                  name: prevoznica_id

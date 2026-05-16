@@ -1,6 +1,7 @@
 package com.rkl.backend.service
 
 import com.rkl.backend.dto.prevoznik.*
+import com.rkl.backend.entity.Label
 import com.rkl.backend.entity.Prevoznik
 import com.rkl.backend.repository.LabelRepository
 import com.rkl.backend.repository.PrevoznikRepository
@@ -52,18 +53,11 @@ class PrevoznikService(
 
     @Transactional
     fun createPrevoznik(request: CreatePrevoznikRequest): PrevoznikDetailResponse {
-        val label = labelRepository.findByColumnNameAndCanonicalValue("prevoznik", request.naziv)
-        if (label == null) {
-            throw IllegalArgumentException(
-                "Ne postoji labela za prevoznik sa kanoničkom vrednošću '${request.naziv}'. " +
-                "Prvo kreirajte labelu za kolonu 'prevoznik' sa ovim nazivom."
-            )
-        }
-
         val existing = prevoznikRepository.findByNaziv(request.naziv)
         if (existing != null) {
             throw IllegalArgumentException("Prevoznik sa nazivom '${request.naziv}' već postoji")
         }
+        ensureLabelExists("prevoznik", request.naziv)
 
         val prevoznik = Prevoznik(
             naziv = request.naziv,
@@ -84,17 +78,11 @@ class PrevoznikService(
         }
 
         request.naziv?.let {
-            val label = labelRepository.findByColumnNameAndCanonicalValue("prevoznik", it)
-            if (label == null) {
-                throw IllegalArgumentException(
-                    "Ne postoji labela za prevoznik sa kanoničkom vrednošću '$it'. " +
-                    "Prvo kreirajte labelu za kolonu 'prevoznik' sa ovim nazivom."
-                )
-            }
             val existing = prevoznikRepository.findByNaziv(it)
             if (existing != null && existing.id != id) {
                 throw IllegalArgumentException("Prevoznik sa nazivom '$it' već postoji")
             }
+            ensureLabelExists("prevoznik", it)
             prevoznik.naziv = it
         }
         request.email?.let { prevoznik.email = it }
@@ -113,6 +101,13 @@ class PrevoznikService(
         }
         prevoznikRepository.delete(prevoznik)
         return PrevoznikDeleteResponse(id = id)
+    }
+
+    private fun ensureLabelExists(columnName: String, canonicalValue: String) {
+        if (labelRepository.findByColumnNameAndCanonicalValue(columnName, canonicalValue) != null) return
+        labelRepository.save(
+            Label(columnName = columnName, canonicalValue = canonicalValue, variations = mutableSetOf())
+        )
     }
 
     private fun Prevoznik.toDto(): PrevoznikDto = PrevoznikDto(

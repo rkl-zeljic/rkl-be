@@ -70,7 +70,10 @@ class FakturaService(
             throw IllegalArgumentException("Datum od ne može biti posle datum do")
         }
 
-        val measurementCount = countMeasurements(request.porucilac, request.datumOd, request.datumDo)
+        val measurementCount = countMeasurements(
+            request.porucilac, request.datumOd, request.datumDo,
+            request.robaFilter, request.prevoznikFilter, request.primalacFilter, request.posiljalacFilter
+        )
 
         val brojFakture = generateBrojFakture()
 
@@ -81,7 +84,12 @@ class FakturaService(
             datumDo = request.datumDo,
             napomena = request.napomena,
             createdBy = createdBy,
-            measurementCount = measurementCount.toInt()
+            measurementCount = measurementCount.toInt(),
+            robaFilter = request.robaFilter.takeIf { it.isNotEmpty() }?.joinToString(","),
+            prevoznikFilter = request.prevoznikFilter.takeIf { it.isNotEmpty() }?.joinToString(","),
+            primalacFilter = request.primalacFilter.takeIf { it.isNotEmpty() }?.joinToString(","),
+            posiljalacFilter = request.posiljalacFilter.takeIf { it.isNotEmpty() }?.joinToString(","),
+            useLabeledValues = request.useLabeledValues
         )
 
         val saved = fakturaRepository.save(faktura)
@@ -151,10 +159,22 @@ class FakturaService(
         return FakturaDeleteResponse(id = id)
     }
 
-    private fun countMeasurements(porucilac: String, datumOd: LocalDate, datumDo: LocalDate): Long {
+    private fun countMeasurements(
+        porucilac: String,
+        datumOd: LocalDate,
+        datumDo: LocalDate,
+        robaFilter: List<String> = emptyList(),
+        prevoznikFilter: List<String> = emptyList(),
+        primalacFilter: List<String> = emptyList(),
+        posiljalacFilter: List<String> = emptyList()
+    ): Long {
         var spec = Specification.where(MerenjeSpecification.textFilter("porucilac", porucilac))
         spec = spec.and(MerenjeSpecification.datumOd(datumOd))
         spec = spec.and(MerenjeSpecification.datumDo(datumDo))
+        MerenjeSpecification.textIn("roba", robaFilter)?.let { spec = spec.and(it) }
+        MerenjeSpecification.textIn("prevoznik", prevoznikFilter)?.let { spec = spec.and(it) }
+        MerenjeSpecification.textIn("primalac", primalacFilter)?.let { spec = spec.and(it) }
+        MerenjeSpecification.textIn("posiljalac", posiljalacFilter)?.let { spec = spec.and(it) }
         return merenjeRepository.count(spec)
     }
 
@@ -195,7 +215,15 @@ class FakturaService(
         prevoznikList = fields?.prevoznikList ?: emptyList(),
         primalacList = fields?.primalacList ?: emptyList(),
         posiljalacList = fields?.posiljalacList ?: emptyList(),
+        robaFilter = parseCsv(robaFilter),
+        prevoznikFilter = parseCsv(prevoznikFilter),
+        primalacFilter = parseCsv(primalacFilter),
+        posiljalacFilter = parseCsv(posiljalacFilter),
+        useLabeledValues = useLabeledValues,
         createdAt = createdAt?.toString(),
         updatedAt = updatedAt?.toString()
     )
+
+    private fun parseCsv(value: String?): List<String> =
+        value?.split(",")?.map { it.trim() }?.filter { it.isNotBlank() } ?: emptyList()
 }

@@ -6,6 +6,7 @@ import com.rkl.backend.entity.Prevoznica
 import com.rkl.backend.entity.PrevoznicaStatus
 import com.rkl.backend.repository.OtpremnicaRepository
 import com.rkl.backend.repository.PrevoznicaRepository
+import com.rkl.backend.repository.PrevoznikRepository
 import com.rkl.backend.repository.PrimalacRepository
 import com.rkl.backend.repository.UserRepository
 import org.slf4j.LoggerFactory
@@ -20,6 +21,7 @@ class PrevoznicaService(
     private val otpremnicaRepository: OtpremnicaRepository,
     private val userRepository: UserRepository,
     private val primalacRepository: PrimalacRepository,
+    private val prevoznikRepository: PrevoznikRepository,
     private val prevoznicaPdfService: PrevoznicaPdfService,
     private val emailService: EmailService,
     private val merenjeFromOtpremnicaService: MerenjeFromOtpremnicaService,
@@ -97,9 +99,12 @@ class PrevoznicaService(
 
         val saved = prevoznicaRepository.save(prevoznica)
 
-        // Update linked merenje with prevoznica data
+        // Ažuriraj merenje iz prevoznice
         if (saved.otpremnica != null) {
             merenjeFromOtpremnicaService.updateMerenjeFromPrevoznica(saved)
+        } else {
+            // Standalone prevoznica — kreira sopstveni merenje record (#8)
+            merenjeFromOtpremnicaService.upsertMerenjeFromStandalonePrevoznica(saved)
         }
 
         return PrevoznicaDetailResponse(data = saved.toDto())
@@ -151,6 +156,8 @@ class PrevoznicaService(
         // Update linked merenje with prevoznica data
         if (saved.otpremnica != null) {
             merenjeFromOtpremnicaService.updateMerenjeFromPrevoznica(saved)
+        } else {
+            merenjeFromOtpremnicaService.upsertMerenjeFromStandalonePrevoznica(saved)
         }
 
         return PrevoznicaDetailResponse(data = saved.toDto())
@@ -175,21 +182,19 @@ class PrevoznicaService(
         try {
             val recipients = mutableListOf<String>()
             recipients.add(mailConfig.adminEmail)
-            // Firma koja prevozi
-            val prevozilacEntity = primalacRepository.findByNaziv(saved.prevozilac)
-            if (prevozilacEntity?.email != null) {
-                recipients.add(prevozilacEntity.email!!)
-            }
-            // Firma koja prima
-            val primalacEntity = primalacRepository.findByNaziv(saved.primalac)
-            if (primalacEntity?.email != null) {
-                recipients.add(primalacEntity.email!!)
-            }
+            // Prevoznik (firma koja prevozi) — lookup u Prevoznik registru
+            // (PRE: traženo u Primalac, pa prevoznik nikad nije dobijao mail).
+            prevoznikRepository.findByNaziv(saved.prevozilac)?.email?.takeIf { it.isNotBlank() }
+                ?.let { recipients.add(it) }
+            // Primalac (firma koja prima) — lookup u Primalac registru
+            primalacRepository.findByNaziv(saved.primalac)?.email?.takeIf { it.isNotBlank() }
+                ?.let { recipients.add(it) }
             // Additional emails
             saved.additionalEmails?.split(",")?.map { it.trim() }?.filter { it.isNotBlank() }
                 ?.let { recipients.addAll(it) }
 
             val uniqueRecipients = recipients.distinct()
+            log.info("Prevoznica {} signed — sending PDF to {}", saved.brojPrevoznice, uniqueRecipients)
             if (uniqueRecipients.isNotEmpty()) {
                 val pdfBytes = prevoznicaPdfService.generatePdf(saved.id!!)
                 emailService.sendDocumentWithAttachment(
@@ -215,6 +220,11 @@ class PrevoznicaService(
 
         if (prevoznica.status != PrevoznicaStatus.KREIRANA) {
             throw IllegalStateException("Potpisana prevoznica se ne može obrisati")
+        }
+
+        // Ukloni standalone merenje koje je prevoznica kreirala (ako postoji)
+        if (prevoznica.otpremnica == null) {
+            merenjeFromOtpremnicaService.deleteMerenjeFromStandalonePrevoznica(prevoznica)
         }
 
         prevoznicaRepository.delete(prevoznica)

@@ -1,0 +1,75 @@
+databaseChangeLog:
+  - changeSet:
+      id: 012-1-add-raw-columns-to-merenja
+      author: rkl
+      changes:
+        - addColumn:
+            tableName: merenja
+            columns:
+              - column:
+                  name: posiljalac_raw
+                  type: varchar(500)
+                  constraints:
+                    nullable: true
+              - column:
+                  name: porucilac_raw
+                  type: varchar(500)
+                  constraints:
+                    nullable: true
+              - column:
+                  name: primalac_raw
+                  type: varchar(500)
+                  constraints:
+                    nullable: true
+              - column:
+                  name: roba_raw
+                  type: varchar(500)
+                  constraints:
+                    nullable: true
+              - column:
+                  name: prevoznik_raw
+                  type: varchar(500)
+                  constraints:
+                    nullable: true
+              - column:
+                  name: registracija_raw
+                  type: varchar(500)
+                  constraints:
+                    nullable: true
+              - column:
+                  name: vozac_raw
+                  type: varchar(500)
+                  constraints:
+                    nullable: true
+              - column:
+                  name: mesto_raw
+                  type: varchar(500)
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: 012-2-backfill-raw-columns
+      author: rkl
+      comment: >-
+        Backfill *_raw kolone trenutnim vrednostima. Za postojeća merenja
+        gubi se mogućnost revertovanja (raw == labeled), ali ovo je
+        "no regression" — brisanje labele neće promeniti vrednosti
+        postojećih redova. Nova merenja (uvoz/otpremnica/prevoznica)
+        upisuju pravu raw vrednost.
+      changes:
+        - sql:
+            sql: UPDATE merenja SET posiljalac_raw = posiljalac WHERE posiljalac_raw IS NULL
+        - sql:
+            sql: UPDATE merenja SET porucilac_raw = porucilac WHERE porucilac_raw IS NULL
+        - sql:
+            sql: UPDATE merenja SET primalac_raw = primalac WHERE primalac_raw IS NULL
+        - sql:
+            sql: UPDATE merenja SET roba_raw = roba WHERE roba_raw IS NULL
+        - sql:
+            sql: UPDATE merenja SET prevoznik_raw = prevoznik WHERE prevoznik_raw IS NULL
+        - sql:
+            sql: UPDATE merenja SET registracija_raw = registracija WHERE registracija_raw IS NULL
+        - sql:
+            sql: UPDATE merenja SET vozac_raw = vozac WHERE vozac_raw IS NULL
+        - sql:
+            sql: UPDATE merenja SET mesto_raw = mesto WHERE mesto_raw IS NULL

@@ -20,7 +20,7 @@ class PrevoznicaPdfService(
 ) {
 
     companion object {
-        private val DATE_FORMAT = DateTimeFormatter.ofPattern("dd.MM.yyyy")
+        private val DATE_FORMAT = DateTimeFormatter.ofPattern("dd.MM.yyyy.")
         private val TEAL = Color(0, 128, 128)
     }
 
@@ -102,7 +102,7 @@ class PrevoznicaPdfService(
         addGoodsHeaderCell(goodsTable, "VRSTA ROBE", headerFont)
         addGoodsHeaderCell(goodsTable, "Km", headerFont)
         addGoodsHeaderCell(goodsTable, "Jed. mere", headerFont)
-        addGoodsHeaderCell(goodsTable, "Stvarna težina", headerFont)
+        addGoodsHeaderCell(goodsTable, "Neto", headerFont)
 
         // Data row
         addGoodsDataCell(goodsTable, p.vrstaRobe, cellFont)

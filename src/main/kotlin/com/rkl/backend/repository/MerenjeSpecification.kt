@@ -41,4 +41,17 @@ object MerenjeSpecification {
             cb.or(*parts.map { cb.equal(lower, it.lowercase()) }.toTypedArray())
         }
     }
+
+    /**
+     * Case-insensitive IN filter from explicit list. Prazna lista = nema constraint-a.
+     * Koristi se za multi-select chip filtere u fakturi (egzaktan match, ne LIKE).
+     */
+    fun textIn(field: String, values: List<String>): Specification<Merenje>? {
+        val clean = values.map { it.trim() }.filter { it.isNotBlank() }
+        if (clean.isEmpty()) return null
+        return Specification { root, _, cb ->
+            val lower = cb.lower(root.get<String>(field))
+            cb.or(*clean.map { cb.equal(lower, it.lowercase()) }.toTypedArray())
+        }
+    }
 }

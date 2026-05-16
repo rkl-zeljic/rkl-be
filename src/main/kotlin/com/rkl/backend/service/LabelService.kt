@@ -121,14 +121,19 @@ class LabelService(
 
         val normalized = normalizeVariation(label.columnName, variation)
         label.variations.remove(normalized)
-        return repository.save(label).toDto()
+        val saved = repository.save(label)
+        // Revert merenja čiji raw odgovara uklonjenoj varijaciji nazad na originalnu vrednost
+        revertVariationFromMeasurements(label.columnName, label.canonicalValue, normalized)
+        return saved.toDto()
     }
 
     @Transactional
     fun deleteLabel(id: Long) {
-        if (!repository.existsById(id)) {
-            throw NoSuchElementException("Labela sa id $id nije pronađena")
+        val label = repository.findById(id).orElseThrow {
+            NoSuchElementException("Labela sa id $id nije pronađena")
         }
+        // Revert sva merenja koja su trenutno na ovoj kanoničkoj vrednosti — vrati ih u raw
+        revertCanonicalFromMeasurements(label.columnName, label.canonicalValue)
         repository.deleteById(id)
     }
 
@@ -245,6 +250,44 @@ class LabelService(
                     logger.info("Relinked $linked measurements to driver user ${driverUser.id} after vozac renormalization")
                 }
             }
+        }
+    }
+
+    /**
+     * Vraća sve redove gde je columnName = canonicalValue nazad na njihove raw vrednosti.
+     * Koristi se pri brisanju labele. Column whitelist guards against SQL injection.
+     */
+    private fun revertCanonicalFromMeasurements(columnName: String, canonicalValue: String) {
+        validateColumn(columnName)
+        val rawColumn = "${columnName}_raw"
+        val reverted = entityManager.createNativeQuery(
+            "UPDATE merenja SET $columnName = $rawColumn " +
+                "WHERE $columnName = :canonical AND $rawColumn IS NOT NULL AND $rawColumn <> $columnName"
+        )
+            .setParameter("canonical", canonicalValue)
+            .executeUpdate()
+        if (reverted > 0) {
+            logger.info("Reverted $reverted measurements for $columnName from canonical '$canonicalValue' back to raw")
+        }
+    }
+
+    /**
+     * Vraća redove čiji raw odgovara konkretnoj varijaciji nazad na raw vrednost,
+     * ali samo ako su trenutno mapirani na canonical (znači još uvek nose label).
+     */
+    private fun revertVariationFromMeasurements(columnName: String, canonicalValue: String, variation: String) {
+        validateColumn(columnName)
+        if (variation.isBlank()) return
+        val rawColumn = "${columnName}_raw"
+        val reverted = entityManager.createNativeQuery(
+            "UPDATE merenja SET $columnName = $rawColumn " +
+                "WHERE $columnName = :canonical AND LOWER($rawColumn) = LOWER(:variation) AND $rawColumn <> $columnName"
+        )
+            .setParameter("canonical", canonicalValue)
+            .setParameter("variation", variation)
+            .executeUpdate()
+        if (reverted > 0) {
+            logger.info("Reverted $reverted measurements for $columnName variation '$variation' back to raw")
         }
     }
 

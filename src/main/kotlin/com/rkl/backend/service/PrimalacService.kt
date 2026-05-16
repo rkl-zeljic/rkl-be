@@ -1,6 +1,7 @@
 package com.rkl.backend.service
 
 import com.rkl.backend.dto.primalac.*
+import com.rkl.backend.entity.Label
 import com.rkl.backend.entity.Primalac
 import com.rkl.backend.repository.LabelRepository
 import com.rkl.backend.repository.PrimalacRepository
@@ -52,18 +53,11 @@ class PrimalacService(
 
     @Transactional
     fun createPrimalac(request: CreatePrimalacRequest): PrimalacDetailResponse {
-        val label = labelRepository.findByColumnNameAndCanonicalValue("primalac", request.naziv)
-        if (label == null) {
-            throw IllegalArgumentException(
-                "Ne postoji labela za primalac sa kanoničkom vrednošću '${request.naziv}'. " +
-                "Prvo kreirajte labelu za kolonu 'primalac' sa ovim nazivom."
-            )
-        }
-
         val existing = primalacRepository.findByNaziv(request.naziv)
         if (existing != null) {
             throw IllegalArgumentException("Primalac sa nazivom '${request.naziv}' već postoji")
         }
+        ensureLabelExists("primalac", request.naziv)
 
         val primalac = Primalac(
             naziv = request.naziv,
@@ -84,17 +78,11 @@ class PrimalacService(
         }
 
         request.naziv?.let {
-            val label = labelRepository.findByColumnNameAndCanonicalValue("primalac", it)
-            if (label == null) {
-                throw IllegalArgumentException(
-                    "Ne postoji labela za primalac sa kanoničkom vrednošću '$it'. " +
-                    "Prvo kreirajte labelu za kolonu 'primalac' sa ovim nazivom."
-                )
-            }
             val existing = primalacRepository.findByNaziv(it)
             if (existing != null && existing.id != id) {
                 throw IllegalArgumentException("Primalac sa nazivom '$it' već postoji")
             }
+            ensureLabelExists("primalac", it)
             primalac.naziv = it
         }
         request.email?.let { primalac.email = it }
@@ -113,6 +101,13 @@ class PrimalacService(
         }
         primalacRepository.delete(primalac)
         return PrimalacDeleteResponse(id = id)
+    }
+
+    private fun ensureLabelExists(columnName: String, canonicalValue: String) {
+        if (labelRepository.findByColumnNameAndCanonicalValue(columnName, canonicalValue) != null) return
+        labelRepository.save(
+            Label(columnName = columnName, canonicalValue = canonicalValue, variations = mutableSetOf())
+        )
     }
 
     private fun Primalac.toDto(): PrimalacDto = PrimalacDto(

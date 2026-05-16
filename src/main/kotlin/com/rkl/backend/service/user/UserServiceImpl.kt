@@ -5,8 +5,10 @@ import com.rkl.backend.dto.user.CreateUserRequestDTO
 import com.rkl.backend.dto.user.UpdateCurrentUserRequestDTO
 import com.rkl.backend.dto.user.UpdateUserRequestDTO
 import com.rkl.backend.dto.user.UserResponseDTO
+import com.rkl.backend.entity.Label
 import com.rkl.backend.enums.UserType
 import com.rkl.backend.mapper.user.UserMapper
+import com.rkl.backend.repository.LabelRepository
 import com.rkl.backend.repository.OtpremnicaRepository
 import com.rkl.backend.repository.PrevoznicaRepository
 import com.rkl.backend.searchfilter.dto.UserFilter
@@ -29,6 +31,7 @@ class UserServiceImpl(
     private val otpremnicaRepository: OtpremnicaRepository,
     private val prevoznicaRepository: PrevoznicaRepository,
     private val authService: AuthService,
+    private val labelRepository: LabelRepository,
 ) : UserService {
 
     val log: Logger = LoggerFactory.getLogger(this.javaClass)
@@ -56,6 +59,7 @@ class UserServiceImpl(
         }
         val created = userDao.create(newUser)
         if (!created.driverName.isNullOrBlank()) {
+            ensureVozacLabel(created.driverName!!)
             measurementService.relinkDriverMeasurements(created.id!!, null, created.driverName)
             relinkDocumentsToDriver(created.id!!, null, created.driverName)
         }
@@ -88,6 +92,9 @@ class UserServiceImpl(
 
         val updated = userDao.update(userDB)
         if (updateUserRequestDTO.driverName != null && oldDriverName != updated.driverName) {
+            if (!updated.driverName.isNullOrBlank()) {
+                ensureVozacLabel(updated.driverName!!)
+            }
             measurementService.relinkDriverMeasurements(updated.id!!, oldDriverName, updated.driverName)
             relinkDocumentsToDriver(updated.id!!, oldDriverName, updated.driverName)
         }
@@ -169,6 +176,13 @@ class UserServiceImpl(
             .also {
                 log.info("Signature deleted for user with ID ${it.id}")
             }
+    }
+
+    private fun ensureVozacLabel(driverName: String) {
+        if (labelRepository.findByColumnNameAndCanonicalValue("vozac", driverName) != null) return
+        labelRepository.save(
+            Label(columnName = "vozac", canonicalValue = driverName, variations = mutableSetOf())
+        )
     }
 
     private fun backfillDriverSignature(userId: Long, signature: String) {

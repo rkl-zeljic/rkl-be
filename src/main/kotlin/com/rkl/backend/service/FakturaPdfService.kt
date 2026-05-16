@@ -90,21 +90,22 @@ class FakturaPdfService(
         val numFont = Font(Font.HELVETICA, 7f, Font.NORMAL)
         val altRowBg = Color(245, 247, 250)
 
+        val useLabeled = faktura.useLabeledValues
         for ((idx, m) in measurements.withIndex()) {
             val bg = if (idx % 2 == 1) altRowBg else Color.WHITE
             addTextCell(table, m.datumIzvestaja?.format(DATE_FORMAT) ?: "", cellFont, Element.ALIGN_CENTER, bg)
-            addTextCell(table, m.merniListBr.toString(), numFont, Element.ALIGN_CENTER, bg)
-            addTextCell(table, m.posiljalac ?: "", cellFont, Element.ALIGN_LEFT, bg)
-            addTextCell(table, m.porucilac ?: "", cellFont, Element.ALIGN_LEFT, bg)
-            addTextCell(table, m.primalac ?: "", cellFont, Element.ALIGN_LEFT, bg)
-            addTextCell(table, m.roba ?: "", cellFont, Element.ALIGN_LEFT, bg)
+            addTextCell(table, m.merniListBr?.toString() ?: "", numFont, Element.ALIGN_CENTER, bg)
+            addTextCell(table, displayValue(m.posiljalac, m.posiljalacRaw, useLabeled), cellFont, Element.ALIGN_LEFT, bg)
+            addTextCell(table, displayValue(m.porucilac, m.porucilacRaw, useLabeled), cellFont, Element.ALIGN_LEFT, bg)
+            addTextCell(table, displayValue(m.primalac, m.primalacRaw, useLabeled), cellFont, Element.ALIGN_LEFT, bg)
+            addTextCell(table, displayValue(m.roba, m.robaRaw, useLabeled), cellFont, Element.ALIGN_LEFT, bg)
             addNumericCell(table, m.bruto, numFont, bg)
             addNumericCell(table, m.tara, numFont, bg)
             addNumericCell(table, m.neto, numFont, bg)
-            addTextCell(table, m.prevoznik ?: "", cellFont, Element.ALIGN_LEFT, bg)
-            addTextCell(table, m.registracija ?: "", cellFont, Element.ALIGN_LEFT, bg)
-            addTextCell(table, m.vozac ?: "", cellFont, Element.ALIGN_LEFT, bg)
-            addTextCell(table, m.mesto ?: "", cellFont, Element.ALIGN_LEFT, bg)
+            addTextCell(table, displayValue(m.prevoznik, m.prevoznikRaw, useLabeled), cellFont, Element.ALIGN_LEFT, bg)
+            addTextCell(table, displayValue(m.registracija, m.registracijaRaw, useLabeled), cellFont, Element.ALIGN_LEFT, bg)
+            addTextCell(table, displayValue(m.vozac, m.vozacRaw, useLabeled), cellFont, Element.ALIGN_LEFT, bg)
+            addTextCell(table, displayValue(m.mesto, m.mestoRaw, useLabeled), cellFont, Element.ALIGN_LEFT, bg)
         }
 
         // Sum row
@@ -128,7 +129,19 @@ class FakturaPdfService(
         var spec = Specification.where(MerenjeSpecification.textFilter("porucilac", faktura.porucilac))
         spec = spec.and(MerenjeSpecification.datumOd(faktura.datumOd))
         spec = spec.and(MerenjeSpecification.datumDo(faktura.datumDo))
+        MerenjeSpecification.textIn("roba", parseCsv(faktura.robaFilter))?.let { spec = spec.and(it) }
+        MerenjeSpecification.textIn("prevoznik", parseCsv(faktura.prevoznikFilter))?.let { spec = spec.and(it) }
+        MerenjeSpecification.textIn("primalac", parseCsv(faktura.primalacFilter))?.let { spec = spec.and(it) }
+        MerenjeSpecification.textIn("posiljalac", parseCsv(faktura.posiljalacFilter))?.let { spec = spec.and(it) }
         return merenjeRepository.findAll(spec, Sort.by(Sort.Direction.ASC, "datumIzvestaja", "merniListBr"))
+    }
+
+    private fun parseCsv(value: String?): List<String> =
+        value?.split(",")?.map { it.trim() }?.filter { it.isNotBlank() } ?: emptyList()
+
+    private fun displayValue(labeled: String?, raw: String?, useLabeled: Boolean): String {
+        val chosen = if (useLabeled) labeled else (raw ?: labeled)
+        return chosen ?: ""
     }
 
     private fun addInfoLine(document: Document, label: String, value: String, labelFont: Font, valueFont: Font) {

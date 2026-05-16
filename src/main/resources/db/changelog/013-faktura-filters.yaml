@@ -1,0 +1,34 @@
+databaseChangeLog:
+  - changeSet:
+      id: 013-1-add-filter-columns-to-fakture
+      author: rkl
+      changes:
+        - addColumn:
+            tableName: fakture
+            columns:
+              - column:
+                  name: roba_filter
+                  type: text
+                  constraints:
+                    nullable: true
+              - column:
+                  name: prevoznik_filter
+                  type: text
+                  constraints:
+                    nullable: true
+              - column:
+                  name: primalac_filter
+                  type: text
+                  constraints:
+                    nullable: true
+              - column:
+                  name: posiljalac_filter
+                  type: text
+                  constraints:
+                    nullable: true
+              - column:
+                  name: use_labeled_values
+                  type: boolean
+                  defaultValueBoolean: true
+                  constraints:
+                    nullable: false

@@ -357,6 +357,18 @@ class MeasurementService(
         entity.importedFile = importedFile
         entity.datumIzvestaja = row.datum ?: reportDate
         entity.merniListBr = row.merniListBr
+        // Raw vrednosti se čuvaju netaknute — koriste se za revert kad se izbriše labela.
+        // Registracija se čuva u normalizovanom obliku (XX-NNN-XX) jer se i varijacije
+        // labela tako normalizuju — bez ovoga revert lookup ne bi matchovao.
+        val normalizedRegistracija = normalizeRegistrationValue(row.registracija)
+        entity.posiljalacRaw = row.posiljalac
+        entity.porucilacRaw = row.porucilac
+        entity.primalacRaw = row.primalac
+        entity.robaRaw = row.roba
+        entity.prevoznikRaw = row.prevoznik
+        entity.registracijaRaw = normalizedRegistracija
+        entity.vozacRaw = row.vozac
+        entity.mestoRaw = row.mesto
         entity.posiljalac = labelService.resolveValue("posiljalac", row.posiljalac)
         entity.porucilac = labelService.resolveValue("porucilac", row.porucilac)
         entity.primalac = labelService.resolveValue("primalac", row.primalac)
@@ -365,7 +377,7 @@ class MeasurementService(
         entity.tara = row.tara
         entity.neto = row.neto
         entity.prevoznik = labelService.resolveValue("prevoznik", row.prevoznik)
-        entity.registracija = labelService.resolveValue("registracija", normalizeRegistrationValue(row.registracija))
+        entity.registracija = labelService.resolveValue("registracija", normalizedRegistracija)
         entity.vozac = labelService.resolveValue("vozac", row.vozac)
         entity.mesto = labelService.resolveValue("mesto", row.mesto)
 
@@ -393,8 +405,20 @@ class MeasurementService(
             emptyMap()
         }
 
+        val standalonePrevoznicaIds = merenja
+            .filter { it.otpremnica == null }
+            .mapNotNull { it.prevoznica?.id }
+            .toSet()
+        val standalonePrevozniceById = if (standalonePrevoznicaIds.isNotEmpty()) {
+            prevoznicaRepository.findAllById(standalonePrevoznicaIds)
+                .associateBy { it.id!! }
+        } else {
+            emptyMap()
+        }
+
         return merenja.map { m ->
             val prevoznica = m.otpremnica?.id?.let { prevozniceByOtpremnica[it] }
+                ?: m.prevoznica?.id?.let { standalonePrevozniceById[it] }
             MeasurementDto(
                 id = m.id,
                 izvorFajl = m.importedFile?.originalFilename,

@@ -80,22 +80,23 @@ class FakturaExcelService(
         }
 
         // Data rows
+        val useLabeled = faktura.useLabeledValues
         for (m in measurements) {
             val dataRow = sheet.createRow(rowIdx++)
 
             setTextCell(dataRow, 0, m.datumIzvestaja?.format(DATE_FORMAT) ?: "", dateStyle)
-            setNumericCell(dataRow, 1, m.merniListBr.toDouble(), numericStyle)
-            setTextCell(dataRow, 2, m.posiljalac ?: "", textStyle)
-            setTextCell(dataRow, 3, m.porucilac ?: "", textStyle)
-            setTextCell(dataRow, 4, m.primalac ?: "", textStyle)
-            setTextCell(dataRow, 5, m.roba ?: "", textStyle)
+            setOptionalNumericCell(dataRow, 1, m.merniListBr?.toDouble(), numericStyle)
+            setTextCell(dataRow, 2, displayValue(m.posiljalac, m.posiljalacRaw, useLabeled), textStyle)
+            setTextCell(dataRow, 3, displayValue(m.porucilac, m.porucilacRaw, useLabeled), textStyle)
+            setTextCell(dataRow, 4, displayValue(m.primalac, m.primalacRaw, useLabeled), textStyle)
+            setTextCell(dataRow, 5, displayValue(m.roba, m.robaRaw, useLabeled), textStyle)
             setOptionalNumericCell(dataRow, 6, m.bruto, numericStyle)
             setOptionalNumericCell(dataRow, 7, m.tara, numericStyle)
             setOptionalNumericCell(dataRow, 8, m.neto, numericStyle)
-            setTextCell(dataRow, 9, m.prevoznik ?: "", textStyle)
-            setTextCell(dataRow, 10, m.registracija ?: "", textStyle)
-            setTextCell(dataRow, 11, m.vozac ?: "", textStyle)
-            setTextCell(dataRow, 12, m.mesto ?: "", textStyle)
+            setTextCell(dataRow, 9, displayValue(m.prevoznik, m.prevoznikRaw, useLabeled), textStyle)
+            setTextCell(dataRow, 10, displayValue(m.registracija, m.registracijaRaw, useLabeled), textStyle)
+            setTextCell(dataRow, 11, displayValue(m.vozac, m.vozacRaw, useLabeled), textStyle)
+            setTextCell(dataRow, 12, displayValue(m.mesto, m.mestoRaw, useLabeled), textStyle)
         }
 
         // Sum row
@@ -135,7 +136,19 @@ class FakturaExcelService(
         var spec = Specification.where(MerenjeSpecification.textFilter("porucilac", faktura.porucilac))
         spec = spec.and(MerenjeSpecification.datumOd(faktura.datumOd))
         spec = spec.and(MerenjeSpecification.datumDo(faktura.datumDo))
+        MerenjeSpecification.textIn("roba", parseCsv(faktura.robaFilter))?.let { spec = spec.and(it) }
+        MerenjeSpecification.textIn("prevoznik", parseCsv(faktura.prevoznikFilter))?.let { spec = spec.and(it) }
+        MerenjeSpecification.textIn("primalac", parseCsv(faktura.primalacFilter))?.let { spec = spec.and(it) }
+        MerenjeSpecification.textIn("posiljalac", parseCsv(faktura.posiljalacFilter))?.let { spec = spec.and(it) }
         return merenjeRepository.findAll(spec, Sort.by(Sort.Direction.ASC, "datumIzvestaja", "merniListBr"))
+    }
+
+    private fun parseCsv(value: String?): List<String> =
+        value?.split(",")?.map { it.trim() }?.filter { it.isNotBlank() } ?: emptyList()
+
+    private fun displayValue(labeled: String?, raw: String?, useLabeled: Boolean): String {
+        val chosen = if (useLabeled) labeled else (raw ?: labeled)
+        return chosen ?: ""
     }
 
     private fun setTextCell(row: Row, col: Int, value: String, style: CellStyle) {

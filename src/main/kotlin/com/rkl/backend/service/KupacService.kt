@@ -2,6 +2,7 @@ package com.rkl.backend.service
 
 import com.rkl.backend.dto.kupac.*
 import com.rkl.backend.entity.Kupac
+import com.rkl.backend.entity.Label
 import com.rkl.backend.repository.KupacRepository
 import com.rkl.backend.repository.LabelRepository
 import org.springframework.stereotype.Service
@@ -52,18 +53,11 @@ class KupacService(
 
     @Transactional
     fun createKupac(request: CreateKupacRequest): KupacDetailResponse {
-        val label = labelRepository.findByColumnNameAndCanonicalValue("porucilac", request.naziv)
-        if (label == null) {
-            throw IllegalArgumentException(
-                "Ne postoji labela za porucilac sa kanoničkom vrednošću '${request.naziv}'. " +
-                "Prvo kreirajte labelu za kolonu 'porucilac' sa ovim nazivom."
-            )
-        }
-
         val existing = kupacRepository.findByNaziv(request.naziv)
         if (existing != null) {
             throw IllegalArgumentException("Kupac sa nazivom '${request.naziv}' već postoji")
         }
+        ensureLabelExists("porucilac", request.naziv)
 
         val kupac = Kupac(
             naziv = request.naziv,
@@ -84,17 +78,11 @@ class KupacService(
         }
 
         request.naziv?.let {
-            val label = labelRepository.findByColumnNameAndCanonicalValue("porucilac", it)
-            if (label == null) {
-                throw IllegalArgumentException(
-                    "Ne postoji labela za porucilac sa kanoničkom vrednošću '$it'. " +
-                    "Prvo kreirajte labelu za kolonu 'porucilac' sa ovim nazivom."
-                )
-            }
             val existing = kupacRepository.findByNaziv(it)
             if (existing != null && existing.id != id) {
                 throw IllegalArgumentException("Kupac sa nazivom '$it' već postoji")
             }
+            ensureLabelExists("porucilac", it)
             kupac.naziv = it
         }
         request.email?.let { kupac.email = it }
@@ -113,6 +101,18 @@ class KupacService(
         }
         kupacRepository.delete(kupac)
         return KupacDeleteResponse(id = id)
+    }
+
+    /**
+     * Pravi labelu za zadati column ako još ne postoji. Variations ostaju prazni —
+     * automatski se popunjavaju iz importa ili ručno kasnije. Bez ove labele,
+     * resolveValue ne bi mogao da mapira buduće uvozne vrednosti na ovaj entitet.
+     */
+    private fun ensureLabelExists(columnName: String, canonicalValue: String) {
+        if (labelRepository.findByColumnNameAndCanonicalValue(columnName, canonicalValue) != null) return
+        labelRepository.save(
+            Label(columnName = columnName, canonicalValue = canonicalValue, variations = mutableSetOf())
+        )
     }
 
     private fun Kupac.toDto(): KupacDto = KupacDto(

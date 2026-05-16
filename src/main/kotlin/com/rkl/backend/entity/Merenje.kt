@@ -33,6 +33,10 @@ class Merenje(
     var otpremnica: Otpremnica? = null,
 
     @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "prevoznica_id")
+    var prevoznica: Prevoznica? = null,
+
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "porucilac_id")
     var kupac: Kupac? = null,
 
@@ -42,8 +46,8 @@ class Merenje(
     @Column(name = "datum_izvestaja")
     var datumIzvestaja: LocalDate? = null,
 
-    @Column(name = "merni_list_br", nullable = false)
-    var merniListBr: Int = 0,
+    @Column(name = "merni_list_br")
+    var merniListBr: Int? = null,
 
     var posiljalac: String? = null,
 
@@ -70,6 +74,30 @@ class Merenje(
     var vozacUser: RklUser? = null,
 
     var mesto: String? = null,
+
+    @Column(name = "posiljalac_raw")
+    var posiljalacRaw: String? = null,
+
+    @Column(name = "porucilac_raw")
+    var porucilacRaw: String? = null,
+
+    @Column(name = "primalac_raw")
+    var primalacRaw: String? = null,
+
+    @Column(name = "roba_raw")
+    var robaRaw: String? = null,
+
+    @Column(name = "prevoznik_raw")
+    var prevoznikRaw: String? = null,
+
+    @Column(name = "registracija_raw")
+    var registracijaRaw: String? = null,
+
+    @Column(name = "vozac_raw")
+    var vozacRaw: String? = null,
+
+    @Column(name = "mesto_raw")
+    var mestoRaw: String? = null,
 
     var potpis: String? = null,
 

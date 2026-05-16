@@ -25,7 +25,7 @@ data class MeasurementDto(
     val isValidated: Boolean = false,
     val izvor: String? = null,
     val datumIzvestaja: String?,
-    val merniListBr: Int,
+    val merniListBr: Int?,
     val posiljalac: String?,
     val porucilac: String?,
     val primalac: String?,

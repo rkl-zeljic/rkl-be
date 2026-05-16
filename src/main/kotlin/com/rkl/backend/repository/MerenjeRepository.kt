@@ -40,6 +40,9 @@ interface MerenjeRepository : JpaRepository<Merenje, Long>, JpaSpecificationExec
 
     fun deleteByOtpremnicaId(otpremnicaId: Long)
 
+    /** Lookup merenja kreiranog iz standalone prevoznice (bez otpremnice). */
+    fun findByPrevoznicaIdAndOtpremnicaIsNull(prevoznicaId: Long): Merenje?
+
     @Query("SELECT COALESCE(MAX(m.merniListBr), 0) FROM Merenje m WHERE m.datumIzvestaja = :datum")
     fun findMaxMerniListBrByDatum(@Param("datum") datum: LocalDate): Int
 

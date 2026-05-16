@@ -58,6 +58,22 @@ class Faktura(
     @Column(name = "measurement_count")
     var measurementCount: Int = 0,
 
+    // Comma-separated multi-value filteri (svi su null = nema filtera za to polje)
+    @Column(name = "roba_filter", columnDefinition = "TEXT")
+    var robaFilter: String? = null,
+
+    @Column(name = "prevoznik_filter", columnDefinition = "TEXT")
+    var prevoznikFilter: String? = null,
+
+    @Column(name = "primalac_filter", columnDefinition = "TEXT")
+    var primalacFilter: String? = null,
+
+    @Column(name = "posiljalac_filter", columnDefinition = "TEXT")
+    var posiljalacFilter: String? = null,
+
+    @Column(name = "use_labeled_values", nullable = false)
+    var useLabeledValues: Boolean = true,
+
     @Column(name = "created_at")
     var createdAt: LocalDateTime? = null,
 
